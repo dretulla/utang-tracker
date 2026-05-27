@@ -1,0 +1,167 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Reports — UtangTracker{% endblock %}
+{% block topbar_title %}Reports{% endblock %}
+{% block page_subtitle %}Analytics{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .report-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .rstat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .rstat-lbl { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-2); margin-bottom: 8px; }
+  .rstat-val { font-size: 1.6rem; font-weight: 700; font-family: var(--mono); letter-spacing: -0.04em; color: var(--text); line-height: 1; }
+  .rstat-val.danger  { color: var(--danger); }
+  .rstat-val.warning { color: var(--warning); }
+  .rstat-val.navy    { color: var(--navy); }
+  .rstat-sub { font-size: 0.7rem; color: var(--text-3); margin-top: 5px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .rank-num { font-size: 0.65rem; font-weight: 700; color: var(--text-3); font-family: var(--mono); width: 18px; text-align: center; flex-shrink: 0; }
+
+  .debtor-row {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 18px; border-bottom: 1px solid var(--border);
+    text-decoration: none; color: inherit; transition: background 0.1s;
+  }
+  .debtor-row:last-child { border-bottom: none; }
+  .debtor-row:hover { background: var(--surface-2); }
+  .dr-info { flex: 1; min-width: 0; }
+  .dr-name { font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dr-meta { font-size: 0.68rem; color: var(--text-2); margin-top: 1px; }
+
+  .progress-mini { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .progress-mini-fill { height: 100%; background: var(--danger); border-radius: 2px; }
+
+  @media (max-width: 800px) {
+    .report-grid { grid-template-columns: 1fr 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 500px) {
+    .report-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Reports & Analytics</h1>
+    <p>Overview of your store's debt performance.</p>
+  </div>
+  <div class="page-header-right">
+    <a href="{% url 'export_csv' %}" class="btn btn-primary">↓ Export CSV</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="report-grid">
+  <div class="rstat">
+    <div class="rstat-lbl">Total Outstanding</div>
+    <div class="rstat-val danger">₱{{ total_outstanding|floatformat:2 }}</div>
+    <div class="rstat-sub">Unpaid + partial balance</div>
+  </div>
+  <div class="rstat">
+    <div class="rstat-lbl">Unpaid Transactions</div>
+    <div class="rstat-val warning">{{ total_unpaid_txns }}</div>
+    <div class="rstat-sub">Fully unpaid records</div>
+  </div>
+  <div class="rstat">
+    <div class="rstat-lbl">Partial Transactions</div>
+    <div class="rstat-val navy">{{ total_partial_txns }}</div>
+    <div class="rstat-sub">Partially settled</div>
+  </div>
+</div>
+
+<div class="two-col">
+
+  <!-- Top Debtors -->
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h3 style="font-size:0.88rem;font-weight:700;">Top Outstanding Debtors</h3>
+      <a href="{% url 'customer_list' %}" class="back-link" style="font-size:0.75rem;">View all →</a>
+    </div>
+    <div class="card">
+      {% if customers_with_debt %}
+        {% with max_balance=customers_with_debt.0.total_balance %}
+        {% for c in customers_with_debt %}
+        <a href="{% url 'customer_detail' c.pk %}" class="debtor-row">
+          <div class="rank-num">#{{ forloop.counter }}</div>
+          <div class="avatar {% if c.is_high_debt %}high{% endif %}" style="width:34px;height:34px;font-size:0.8rem;border-radius:9px;{% if not c.is_high_debt %}background:var(--navy-light);color:var(--navy);{% endif %}">
+            {{ c.name|slice:":1"|upper }}
+          </div>
+          <div class="dr-info">
+            <div class="dr-name">{{ c.name }}</div>
+            <div class="progress-mini">
+              <div class="progress-mini-fill" style="width:{% widthratio c.total_balance max_balance 100 %}%;"></div>
+            </div>
+          </div>
+          <div style="font-family:var(--mono);font-size:0.82rem;font-weight:700;color:var(--danger);flex-shrink:0;">
+            ₱{{ c.total_balance|floatformat:2 }}
+          </div>
+        </a>
+        {% endfor %}
+        {% endwith %}
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🎉</div>
+        <p>No outstanding debts!</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent Transactions -->
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h3 style="font-size:0.88rem;font-weight:700;">Recent Activity</h3>
+      <a href="{% url 'transaction_list' %}" class="back-link" style="font-size:0.75rem;">View all →</a>
+    </div>
+    <div class="card">
+      {% if recent_txns %}
+      {% for txn in recent_txns %}
+      <a href="{% url 'transaction_detail' txn.pk %}" style="display:flex;align-items:center;gap:11px;padding:11px 18px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background 0.1s;" class="debtor-row">
+        <div class="avatar {% if txn.status == 'paid' %}paid{% elif txn.status == 'partial' %}partial{% else %}high{% endif %}" style="width:32px;height:32px;font-size:0.72rem;border-radius:8px;">
+          {{ txn.customer.name|slice:":1"|upper }}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.8rem;font-weight:600;">{{ txn.customer.name }}</div>
+          <div style="font-size:0.68rem;color:var(--text-2);">{{ txn.date }} · {{ txn.items.count }} item{{ txn.items.count|pluralize }}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:var(--mono);font-size:0.78rem;font-weight:600;color:{% if txn.remaining_balance > 0 %}var(--danger){% else %}var(--success){% endif %};">
+            ₱{{ txn.remaining_balance|floatformat:2 }}
+          </div>
+          {% if txn.status == 'paid' %}
+            <span class="status-pill status-paid" style="font-size:0.58rem;">Paid</span>
+          {% elif txn.status == 'partial' %}
+            <span class="status-pill status-partial" style="font-size:0.58rem;">Partial</span>
+          {% else %}
+            <span class="status-pill status-unpaid" style="font-size:0.58rem;">Unpaid</span>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>No transactions yet.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

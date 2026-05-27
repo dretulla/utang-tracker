@@ -1,0 +1,164 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Transactions — UtangTracker{% endblock %}
+{% block topbar_title %}Transactions{% endblock %}
+{% block page_subtitle %}All Records{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{% url 'transaction_create' %}" class="btn btn-primary btn-sm">+ New Transaction</a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .mobile-txn-list { display: none; }
+  @media (max-width: 760px) {
+    .desktop-table { display: none; }
+    .mobile-txn-list { display: block; }
+
+    .txn-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.1s;
+    }
+    .txn-row:last-child { border-bottom: none; }
+    .txn-row:hover { background: var(--surface-2); }
+    .txn-info { flex: 1; min-width: 0; }
+    .txn-name { font-size: 0.84rem; font-weight: 700; }
+    .txn-meta { font-size: 0.68rem; color: var(--text-2); margin-top: 2px; }
+    .txn-right { text-align: right; flex-shrink: 0; }
+    .txn-amount { font-family: var(--mono); font-size: 0.82rem; font-weight: 700; }
+    .txn-amount.danger { color: var(--danger); }
+    .txn-amount.success { color: var(--success); }
+
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>All Transactions</h1>
+    <p>View and manage all debt records across customers.</p>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:18px;">
+  <div class="card-body" style="padding:14px 16px;">
+    <form method="get" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:2;min-width:160px;">
+        <div class="form-label" style="margin-bottom:4px;">Search Customer</div>
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" name="q" value="{{ query }}" class="search-input" placeholder="Customer name…" />
+        </div>
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <div class="form-label" style="margin-bottom:4px;">Status</div>
+        <select name="status" class="form-control" style="padding:9px 28px 9px 10px;">
+          <option value="">All Status</option>
+          <option value="unpaid"  {% if status == 'unpaid'  %}selected{% endif %}>Unpaid</option>
+          <option value="partial" {% if status == 'partial' %}selected{% endif %}>Partial</option>
+          <option value="paid"    {% if status == 'paid'    %}selected{% endif %}>Paid</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Filter</button>
+      <a href="{% url 'transaction_list' %}" class="btn btn-ghost" style="align-self:flex-end;">Clear</a>
+    </form>
+  </div>
+</div>
+
+{% if txns %}
+
+<!-- DESKTOP: Table -->
+<div class="card desktop-table">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Customer</th>
+          <th>Date / Time</th>
+          <th>Items</th>
+          <th>Status</th>
+          <th class="td-right">Total</th>
+          <th class="td-right">Paid</th>
+          <th class="td-right">Balance</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for txn in txns %}
+        <tr>
+          <td class="td-muted td-mono" style="font-size:0.72rem;">{{ txn.pk }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div class="avatar {% if txn.status == 'paid' %}paid{% elif txn.status == 'partial' %}partial{% else %}high{% endif %}" style="width:30px;height:30px;font-size:0.72rem;border-radius:8px;">
+                {{ txn.customer.name|slice:":1"|upper }}
+              </div>
+              <a href="{% url 'customer_detail' txn.customer.pk %}" style="font-weight:600;font-size:0.82rem;color:inherit;text-decoration:none;">{{ txn.customer.name }}</a>
+            </div>
+          </td>
+          <td class="td-mono td-muted" style="font-size:0.78rem;">{{ txn.date }}<br><span style="font-size:0.72rem;color:var(--text-3);">{{ txn.time|time:'H:i' }}</span></td>
+          <td class="td-muted" style="font-size:0.78rem;">{{ txn.items.count }} item{{ txn.items.count|pluralize }}</td>
+          <td>
+            {% if txn.status == 'paid' %}<span class="status-pill status-paid">Paid</span>
+            {% elif txn.status == 'partial' %}<span class="status-pill status-partial">Partial</span>
+            {% else %}<span class="status-pill status-unpaid">Unpaid</span>{% endif %}
+          </td>
+          <td class="td-mono td-right">₱{{ txn.total_amount|floatformat:2 }}</td>
+          <td class="td-mono td-right td-success">₱{{ txn.total_paid|floatformat:2 }}</td>
+          <td class="td-mono td-right {% if txn.remaining_balance > 0 %}td-danger{% else %}td-success{% endif %}">₱{{ txn.remaining_balance|floatformat:2 }}</td>
+          <td><a href="{% url 'transaction_detail' txn.pk %}" class="btn btn-ghost btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MOBILE: Activity-style rows -->
+<div class="card mobile-txn-list">
+  {% for txn in txns %}
+  <a href="{% url 'transaction_detail' txn.pk %}" class="txn-row">
+    <div class="avatar {% if txn.status == 'paid' %}paid{% elif txn.status == 'partial' %}partial{% else %}high{% endif %}" style="width:36px;height:36px;font-size:0.8rem;border-radius:10px;flex-shrink:0;">
+      {{ txn.customer.name|slice:":1"|upper }}
+    </div>
+    <div class="txn-info">
+      <div class="txn-name">{{ txn.customer.name }}</div>
+      <div class="txn-meta">{{ txn.date }} · {{ txn.items.count }} item{{ txn.items.count|pluralize }} · #{{ txn.pk }}</div>
+    </div>
+    <div class="txn-right">
+      <div class="txn-amount {% if txn.remaining_balance > 0 %}danger{% else %}success{% endif %}">
+        ₱{{ txn.remaining_balance|floatformat:2 }}
+      </div>
+      {% if txn.status == 'paid' %}<span class="status-pill status-paid" style="font-size:0.6rem;">Paid</span>
+      {% elif txn.status == 'partial' %}<span class="status-pill status-partial" style="font-size:0.6rem;">Partial</span>
+      {% else %}<span class="status-pill status-unpaid" style="font-size:0.6rem;">Unpaid</span>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:48px 20px;">
+    <div class="empty-icon">📋</div>
+    <p style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:6px;">
+      {% if query or status %}No transactions match your filters{% else %}No transactions yet{% endif %}
+    </p>
+    <p style="margin-bottom:16px;">
+      {% if query or status %}Try clearing the filters.{% else %}Create your first transaction to get started.{% endif %}
+    </p>
+    {% if not query and not status %}
+    <a href="{% url 'transaction_create' %}" class="btn btn-primary">+ New Transaction</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — UtangTracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #EDE8E1; --surface: #FFFFFF; --surface-2: #F7F4F0;
+      --border: #DDD8D0; --border-2: #C8C2B8;
+      --navy: #1C2E4A; --navy-dark: #111E30;
+      --text: #1A1611; --text-2: #5C5449; --text-3: #9C9287;
+      --danger: #991B1B; --danger-bg: #FEF2F2; --danger-bd: #FECACA;
+      --serif: 'Lora', Georgia, serif;
+      --sans: 'DM Sans', system-ui, sans-serif;
+      --r-sm: 6px; --r-lg: 14px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top nav bar — matching reference image */
+    .auth-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 36px;
+      height: 52px;
+      background: var(--navy);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .auth-nav-brand {
+      display: flex; align-items: center; gap: 8px;
+      text-decoration: none;
+    }
+    .nav-dot { width: 8px; height: 8px; background: #3B82F6; border-radius: 50%; }
+    .nav-brand-name {
+      font-family: var(--serif);
+      font-size: 0.95rem; font-weight: 600; color: #fff;
+      letter-spacing: -0.01em;
+    }
+    .auth-nav-links { display: flex; align-items: center; gap: 6px; }
+    .nav-link-ghost {
+      font-size: 0.8rem; font-weight: 500; color: rgba(255,255,255,0.7);
+      text-decoration: none; padding: 6px 12px; border-radius: var(--r-sm);
+      transition: color 0.13s;
+    }
+    .nav-link-ghost:hover { color: #fff; }
+    .nav-link-btn {
+      font-size: 0.8rem; font-weight: 600; color: #fff;
+      text-decoration: none; padding: 6px 14px;
+      background: var(--navy-dark); border-radius: var(--r-sm);
+      border: 1px solid rgba(255,255,255,0.15);
+      transition: all 0.13s;
+    }
+    .nav-link-btn:hover { background: rgba(255,255,255,0.1); }
+
+    /* Page body */
+    .auth-body {
+      flex: 1; display: flex;
+      align-items: center; justify-content: center;
+      padding: 36px 16px;
+    }
+
+    .outer {
+      width: 100%; max-width: 400px;
+      animation: rise 0.32s cubic-bezier(0.16,1,0.3,1);
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Heading — matches "Welcome back." in reference */
+    .page-heading {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .page-heading h1 {
+      font-family: var(--serif);
+      font-size: 2rem; font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .page-heading p {
+      font-size: 0.85rem;
+      color: var(--text-2);
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 28px 26px;
+      box-shadow: 0 4px 20px rgba(26,22,17,0.08), 0 1px 4px rgba(26,22,17,0.04);
+    }
+
+    /* Error */
+    .err-bar { background: var(--danger-bg); border: 1px solid var(--danger-bd); border-radius: var(--r-sm); padding: 9px 12px; font-size: 0.8rem; color: var(--danger); margin-bottom: 16px; display: flex; align-items: center; gap: 7px; }
+
+    /* Fields */
+    .field { margin-bottom: 14px; }
+    .label { display: block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-2); margin-bottom: 6px; }
+    .inp-wrap { position: relative; }
+    .inp-ico { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.82rem; color: var(--text-3); pointer-events: none; }
+    input.inp {
+      width: 100%; padding: 10px 12px 10px 32px;
+      background: var(--surface-2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      font-family: var(--sans); font-size: 0.875rem; color: var(--text);
+      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+      -webkit-appearance: none;
+    }
+    input.inp::placeholder { color: var(--text-3); }
+    input.inp:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(28,46,74,0.09); background: var(--surface); }
+    .field-err { font-size: 0.7rem; color: var(--danger); margin-top: 4px; }
+
+    .forgot-row { display: flex; justify-content: flex-end; margin: -4px 0 16px; }
+    .forgot-link { font-size: 0.75rem; color: var(--text-2); text-decoration: none; font-weight: 500; transition: color 0.13s; }
+    .forgot-link:hover { color: var(--navy); }
+
+    /* Submit */
+    .btn-submit {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; padding: 11px;
+      background: var(--text); /* black, like reference image */
+      color: #fff; border: none; border-radius: var(--r-sm);
+      font-family: var(--sans); font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; letter-spacing: 0.01em;
+      box-shadow: 0 2px 8px rgba(26,22,17,0.18);
+      transition: background 0.14s, transform 0.12s;
+    }
+    .btn-submit:hover { background: #2d2820; transform: translateY(-1px); }
+    .btn-submit:active { transform: scale(0.98); }
+
+    /* Register link */
+    .reg-row { text-align: center; margin-top: 16px; font-size: 0.8rem; color: var(--text-2); }
+    .reg-row a { color: var(--navy); font-weight: 700; text-decoration: none; }
+    .reg-row a:hover { text-decoration: underline; }
+
+    .divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; font-size: 0.67rem; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .btn-ghost-reg { display: flex; align-items: center; justify-content: center; width: 100%; padding: 10px; background: transparent; border: 1.5px solid var(--border-2); border-radius: var(--r-sm); font-family: var(--sans); font-size: 0.84rem; font-weight: 600; color: var(--text-2); text-decoration: none; transition: all 0.14s; }
+    .btn-ghost-reg:hover { border-color: var(--navy); color: var(--navy); background: var(--surface-2); }
+  </style>
+</head>
+<body>
+  <!-- Nav bar -->
+  <nav class="auth-nav">
+    <a href="/" class="auth-nav-brand">
+      <div class="nav-dot"></div>
+      <span class="nav-brand-name">UtangTracker</span>
+    </a>
+    <div class="auth-nav-links">
+      <a href="{% url 'login' %}" class="nav-link-ghost">Login</a>
+      <a href="{% url 'register' %}" class="nav-link-btn">Register</a>
+    </div>
+  </nav>
+
+  <div class="auth-body">
+    <div class="outer">
+      <div class="page-heading">
+        <h1>Welcome back.</h1>
+        <p>Sign in to manage your store debts.</p>
+      </div>
+
+      <div class="card">
+        {% if form.non_field_errors %}
+        <div class="err-bar">⚠ {{ form.non_field_errors.as_text|slice:"2:" }}</div>
+        {% endif %}
+
+        <form method="post" autocomplete="on">
+          {% csrf_token %}
+          <div class="field">
+            <label class="label">Username</label>
+            <div class="inp-wrap">
+              <input type="text" name="username" class="inp" placeholder="Your username"
+                value="{{ form.username.value|default:'' }}" autocomplete="username" />
+              <span class="inp-ico">👤</span>
+            </div>
+            {% if form.username.errors %}<div class="field-err">{{ form.username.errors.as_text|slice:"2:" }}</div>{% endif %}
+          </div>
+          <div class="field">
+            <label class="label">Password</label>
+            <div class="inp-wrap">
+              <input type="password" name="password" class="inp" placeholder="Your password" autocomplete="current-password" />
+              <span class="inp-ico">🔒</span>
+            </div>
+            {% if form.password.errors %}<div class="field-err">{{ form.password.errors.as_text|slice:"2:" }}</div>{% endif %}
+          </div>
+          <div class="forgot-row">
+            <a href="{% url 'recovery_step1' %}" class="forgot-link">Forgot password?</a>
+          </div>
+          <button type="submit" class="btn-submit">Sign In →</button>
+        </form>
+
+        <div class="reg-row" style="margin-top:14px;">
+          No account? <a href="{% url 'register' %}">Register →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

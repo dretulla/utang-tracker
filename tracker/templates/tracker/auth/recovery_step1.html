@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Recovery — UtangTracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#EDE8E1;--surface:#FFFFFF;--surface-2:#F7F4F0;--border:#DDD8D0;--border-2:#C8C2B8;--navy:#1C2E4A;--navy-dark:#111E30;--navy-light:#E8EDF5;--text:#1A1611;--text-2:#5C5449;--text-3:#9C9287;--danger:#991B1B;--danger-bg:#FEF2F2;--danger-bd:#FECACA;--serif:'Lora',Georgia,serif;--sans:'DM Sans',system-ui,sans-serif;--r-sm:6px;--r-lg:14px;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:15px;}
+    body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;}
+    .auth-nav{display:flex;align-items:center;justify-content:space-between;padding:0 36px;height:52px;background:var(--navy);}
+    .auth-nav-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+    .nav-dot{width:8px;height:8px;background:#3B82F6;border-radius:50%;}
+    .nav-brand-name{font-family:var(--serif);font-size:0.95rem;font-weight:600;color:#fff;}
+    .nav-link-ghost{font-size:0.8rem;font-weight:500;color:rgba(255,255,255,0.7);text-decoration:none;padding:6px 12px;border-radius:var(--r-sm);}
+    .nav-link-ghost:hover{color:#fff;}
+    .auth-body{flex:1;display:flex;align-items:center;justify-content:center;padding:36px 16px;}
+    .outer{width:100%;max-width:400px;animation:rise 0.32s cubic-bezier(0.16,1,0.3,1);}
+    @keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+    /* Steps indicator */
+    .steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:28px;}
+    .step-item{display:flex;align-items:center;gap:0;}
+    .step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;font-family:var(--sans);border:2px solid var(--border);background:var(--surface);color:var(--text-3);transition:all 0.2s;}
+    .step-circle.active{border-color:var(--navy);background:var(--navy);color:#fff;}
+    .step-circle.done{border-color:#BBF7D0;background:#F0FDF4;color:#166534;}
+    .step-label{font-size:0.65rem;font-weight:600;color:var(--text-3);margin-top:4px;text-align:center;white-space:nowrap;}
+    .step-label.active{color:var(--navy);}
+    .step-wrap{display:flex;flex-direction:column;align-items:center;gap:0;}
+    .step-line{width:48px;height:2px;background:var(--border);margin:0 4px;margin-bottom:20px;}
+    .step-line.done{background:#BBF7D0;}
+
+    .page-heading{text-align:center;margin-bottom:24px;}
+    .page-heading h1{font-family:var(--serif);font-size:1.7rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:6px;}
+    .page-heading p{font-size:0.85rem;color:var(--text-2);}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:28px 26px;box-shadow:0 4px 20px rgba(26,22,17,0.08),0 1px 4px rgba(26,22,17,0.04);}
+    .err-bar{background:var(--danger-bg);border:1px solid var(--danger-bd);border-radius:var(--r-sm);padding:9px 12px;font-size:0.8rem;color:var(--danger);margin-bottom:14px;display:flex;align-items:flex-start;gap:7px;}
+    .field{margin-bottom:14px;}
+    .label{display:block;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-2);margin-bottom:5px;}
+    .inp-wrap{position:relative;}
+    .inp-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.82rem;color:var(--text-3);pointer-events:none;}
+    input.inp{width:100%;padding:10px 12px 10px 32px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:var(--sans);font-size:0.875rem;color:var(--text);outline:none;transition:border-color 0.15s,box-shadow 0.15s;-webkit-appearance:none;}
+    input.inp::placeholder{color:var(--text-3);}
+    input.inp:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(28,46,74,0.09);background:var(--surface);}
+    .field-err{font-size:0.7rem;color:var(--danger);margin-top:4px;}
+
+    .info-box{background:var(--navy-light);border:1px solid #C5D1E5;border-radius:var(--r-sm);padding:10px 13px;font-size:0.78rem;color:var(--navy);margin-bottom:16px;line-height:1.55;display:flex;align-items:flex-start;gap:7px;}
+
+    .btn-submit{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px;background:var(--text);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:0.9rem;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(26,22,17,0.15);transition:background 0.14s,transform 0.12s;}
+    .btn-submit:hover{background:#2d2820;transform:translateY(-1px);}
+    .btn-submit:active{transform:scale(0.98);}
+
+    .back-row{text-align:center;margin-top:14px;font-size:0.8rem;color:var(--text-2);}
+    .back-row a{color:var(--navy);font-weight:700;text-decoration:none;}
+    .back-row a:hover{text-decoration:underline;}
+  </style>
+</head>
+<body>
+  <nav class="auth-nav">
+    <a href="/" class="auth-nav-brand"><div class="nav-dot"></div><span class="nav-brand-name">UtangTracker</span></a>
+    <a href="{% url 'login' %}" class="nav-link-ghost">← Back to Login</a>
+  </nav>
+
+  <div class="auth-body">
+    <div class="outer">
+      <!-- Steps indicator -->
+      <div class="steps">
+        <div class="step-wrap">
+          <div class="step-circle active">1</div>
+          <div class="step-label active">Username</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-wrap">
+          <div class="step-circle">2</div>
+          <div class="step-label">Questions</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-wrap">
+          <div class="step-circle">3</div>
+          <div class="step-label">New Password</div>
+        </div>
+      </div>
+
+      <div class="page-heading">
+        <h1>Account Recovery.</h1>
+        <p>Enter your username to begin the recovery process.</p>
+      </div>
+
+      <div class="card">
+        {% if form.non_field_errors %}
+        <div class="err-bar">⚠ <span>{{ form.non_field_errors.as_text|slice:"2:" }}</span></div>
+        {% endif %}
+
+        <div class="info-box">
+          🔐 You'll be asked to answer the security questions you set during registration. Make sure you remember your answers.
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="field">
+            <label class="label">Username</label>
+            <div class="inp-wrap">
+              <input type="text" name="username" class="inp" placeholder="Enter your username"
+                value="{{ form.username.value|default:'' }}" autofocus autocomplete="username" />
+              <span class="inp-ico">👤</span>
+            </div>
+            {% if form.username.errors %}<div class="field-err">{{ form.username.errors.as_text|slice:"2:" }}</div>{% endif %}
+          </div>
+          <button type="submit" class="btn-submit">Continue →</button>
+        </form>
+      </div>
+
+      <div class="back-row"><a href="{% url 'login' %}">← Back to sign in</a></div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt #{{ txn.pk }} — {{ txn.customer.name }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f4f1ec;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px 48px;
+      color: #1a1a1a;
+    }
+
+    .receipt {
+      background: #fff;
+      width: 100%;
+      max-width: 420px;
+      border-radius: 18px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+      overflow: hidden;
+    }
+
+    .receipt-header {
+      background: #1c2e4a;
+      color: #fff;
+      padding: 28px 24px 22px;
+      text-align: center;
+    }
+    .receipt-header .store-name {
+      font-size: 1.1rem; font-weight: 800; letter-spacing: 0.04em; opacity: 0.9; margin-bottom: 4px;
+    }
+    .receipt-header h1 {
+      font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em;
+    }
+    .receipt-header .receipt-num {
+      font-size: 0.75rem; opacity: 0.6; margin-top: 4px; font-family: 'Courier New', monospace;
+    }
+
+    .status-band {
+      padding: 10px 24px; text-align: center; font-size: 0.78rem;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .status-band.unpaid  { background: #fef2f2; color: #b91c1c; }
+    .status-band.partial { background: #fffbeb; color: #b45309; }
+    .status-band.paid    { background: #f0fdf4; color: #15803d; }
+
+    .receipt-body { padding: 20px 24px; }
+
+    .customer-row {
+      display: flex; align-items: center; gap: 14px;
+      padding-bottom: 18px; border-bottom: 1.5px dashed #e5e7eb; margin-bottom: 18px;
+    }
+    .avatar {
+      width: 46px; height: 46px; border-radius: 12px; background: #dbe4f3; color: #1c2e4a;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; font-weight: 800; flex-shrink: 0;
+    }
+    .customer-name { font-size: 1rem; font-weight: 700; }
+    .customer-phone { font-size: 0.75rem; color: #6b7280; margin-top: 2px; }
+
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.8rem; padding: 6px 0;
+    }
+    .info-label { color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 0.68rem; letter-spacing: 0.06em; }
+    .info-val { font-weight: 600; text-align: right; }
+
+    .section-title {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #9ca3af; margin: 18px 0 10px;
+    }
+
+    .items-table { width: 100%; border-collapse: collapse; }
+    .items-table th {
+      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em;
+      color: #9ca3af; font-weight: 700; padding: 0 0 8px;
+      border-bottom: 1px solid #f3f4f6; text-align: left;
+    }
+    .items-table th:last-child { text-align: right; }
+    .items-table td {
+      padding: 9px 0; font-size: 0.8rem; border-bottom: 1px solid #f9fafb; vertical-align: middle;
+    }
+    .items-table td:last-child { text-align: right; font-family: 'Courier New', monospace; font-weight: 700; }
+    .item-name { font-weight: 600; }
+    .item-meta { font-size: 0.68rem; color: #9ca3af; margin-top: 1px; }
+
+    .totals { margin-top: 14px; border-top: 1.5px dashed #e5e7eb; padding-top: 14px; }
+    .total-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 4px 0; }
+    .total-row .label { color: #6b7280; }
+    .total-row .val { font-family: 'Courier New', monospace; font-weight: 700; }
+    .total-row.grand {
+      font-size: 1rem; font-weight: 800; border-top: 1.5px solid #e5e7eb;
+      margin-top: 8px; padding-top: 10px; color: #1c2e4a;
+    }
+    .total-row.balance-due .val { color: #dc2626; }
+    .total-row.balance-paid .val { color: #16a34a; }
+
+    .payment-row {
+      display: flex; justify-content: space-between; font-size: 0.75rem; padding: 4px 0; color: #374151;
+    }
+    .payment-row .val { font-family: 'Courier New', monospace; color: #16a34a; font-weight: 600; }
+
+    /* QR section */
+    .qr-section {
+      text-align: center; padding: 24px 24px 20px;
+      border-top: 1.5px dashed #e5e7eb; margin-top: 20px;
+    }
+    .qr-section img {
+      width: 180px; height: 180px; border-radius: 10px; border: 3px solid #f3f4f6;
+    }
+    .qr-badge {
+      display: inline-block;
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      margin-bottom: 12px;
+      letter-spacing: 0.04em;
+    }
+    .qr-label {
+      font-size: 0.72rem; color: #6b7280; margin-top: 10px; line-height: 1.5;
+    }
+    .qr-hint {
+      font-size: 0.65rem; color: #9ca3af; margin-top: 6px;
+    }
+
+    .receipt-footer {
+      text-align: center; padding: 16px 24px 24px; font-size: 0.7rem; color: #9ca3af;
+    }
+
+    /* Buttons */
+    .btn-row { padding: 0 24px 8px; display: flex; gap: 10px; }
+    .print-btn {
+      flex: 1; padding: 13px; background: #1c2e4a; color: #fff; border: none;
+      border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+    }
+    .copy-btn {
+      width: 100%; padding: 11px; background: #f3f4f6; color: #374151;
+      border: 1px solid #e5e7eb; border-radius: 10px; font-size: 0.82rem;
+      font-weight: 600; cursor: pointer; margin: 0 24px 16px; display: block;
+      box-sizing: border-box;
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .receipt { box-shadow: none; border-radius: 0; max-width: 100%; }
+      .btn-row, .copy-btn { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="receipt">
+
+  <div class="receipt-header">
+    <div class="store-name">🧾 UtangTracker</div>
+    <h1>Debt Receipt</h1>
+    <div class="receipt-num">Transaction #{{ txn.pk }}</div>
+  </div>
+
+  <div class="status-band {{ txn.status }}">
+    {% if txn.status == 'paid' %}✓ Fully Paid
+    {% elif txn.status == 'partial' %}⚡ Partially Paid
+    {% else %}● Unpaid{% endif %}
+  </div>
+
+  <div class="receipt-body">
+
+    <div class="customer-row">
+      <div class="avatar">{{ txn.customer.name|slice:":1"|upper }}</div>
+      <div>
+        <div class="customer-name">{{ txn.customer.name }}</div>
+        {% if txn.customer.phone %}
+        <div class="customer-phone">📞 {{ txn.customer.phone }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="info-row">
+      <span class="info-label">Date</span>
+      <span class="info-val">{{ txn.date }}</span>
+    </div>
+    {% if txn.time %}
+    <div class="info-row">
+      <span class="info-label">Time</span>
+      <span class="info-val">{{ txn.time|time:"g:i A" }}</span>
+    </div>
+    {% endif %}
+
+    <div class="section-title">Items</div>
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th style="text-align:center;">Qty</th>
+          <th style="text-align:right;">Price</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>
+            <div class="item-name">{{ item.item_name }}</div>
+            <div class="item-meta">{{ item.quantity }} {{ item.unit }}</div>
+          </td>
+          <td style="text-align:center; font-size:0.78rem; color:#6b7280;">{{ item.quantity }}</td>
+          <td style="text-align:right; font-size:0.78rem; color:#6b7280; font-family:'Courier New',monospace;">₱{{ item.price|floatformat:2 }}</td>
+          <td>₱{{ item.subtotal|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="total-row">
+        <span class="label">Total Amount</span>
+        <span class="val">₱{{ txn.total_amount|floatformat:2 }}</span>
+      </div>
+      {% if payments %}
+      <div class="section-title" style="margin-top:12px;">Payments</div>
+      {% for p in payments %}
+      <div class="payment-row">
+        <span>{{ p.date }}{% if p.note %} — {{ p.note }}{% endif %}</span>
+        <span class="val">+₱{{ p.amount|floatformat:2 }}</span>
+      </div>
+      {% endfor %}
+      <div class="total-row">
+        <span class="label">Total Paid</span>
+        <span class="val" style="color:#16a34a;">₱{{ txn.total_paid|floatformat:2 }}</span>
+      </div>
+      {% endif %}
+      <div class="total-row grand {% if txn.remaining_balance > 0 %}balance-due{% else %}balance-paid{% endif %}">
+        <span>Balance Due</span>
+        <span class="val">₱{{ txn.remaining_balance|floatformat:2 }}</span>
+      </div>
+    </div>
+
+    {% if txn.promise_date %}
+    <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:12px 14px;margin-top:16px;font-size:0.78rem;">
+      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#b45309;margin-bottom:4px;">🤝 Promise to Pay</div>
+      <div style="font-weight:700;">{{ txn.promise_date }}{% if txn.promise_time %} at {{ txn.promise_time|time:"g:i A" }}{% endif %}</div>
+    </div>
+    {% endif %}
+
+    {% if txn.notes %}
+    <div style="background:#f9fafb;border-radius:10px;padding:12px 14px;margin-top:12px;font-size:0.78rem;color:#374151;">
+      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#9ca3af;margin-bottom:4px;">Notes</div>
+      {{ txn.notes }}
+    </div>
+    {% endif %}
+
+    <!-- QR Code — works offline, no internet needed -->
+    <div class="qr-section">
+      <div class="qr-badge">📴 Works Offline</div>
+      <br>
+      <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" />
+      <div class="qr-label">
+        <strong>Scan with phone camera</strong> to read receipt details<br>
+        No internet or app needed
+      </div>
+      <div class="qr-hint">QR contains full receipt info as text</div>
+    </div>
+
+  </div>
+
+  <div class="btn-row">
+    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  </div>
+
+  <div style="padding:0 24px 16px;">
+    <button id="copyBtn" onclick="copyText()"
+      style="width:100%;padding:11px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:10px;font-size:0.82rem;font-weight:600;cursor:pointer;">
+      📋 Copy Receipt Text
+    </button>
+  </div>
+
+  <div class="receipt-footer">
+    Generated by UtangTracker
+  </div>
+
+</div>
+
+<script>
+const receiptText = {{ qr_text_json|safe }};
+function copyText() {
+  navigator.clipboard.writeText(receiptText).then(function() {
+    var btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied!';
+    btn.style.background = '#dcfce7';
+    btn.style.color = '#15803d';
+    setTimeout(function(){ btn.textContent = '📋 Copy Receipt Text'; btn.style.background=''; btn.style.color=''; }, 2000);
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Delete Account — UtangTracker{% endblock %}
+{% block topbar_title %}Delete Account{% endblock %}
+{% block page_subtitle %}Danger zone{% endblock %}
+
+{% block content %}
+<div style="max-width:440px;margin:0 auto;">
+  <div class="card" style="border-color:var(--danger-bd);">
+    <div style="background:var(--danger-bg);border-bottom:1px solid var(--danger-bd);padding:16px 20px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:1rem;">⚠</span>
+      <span style="font-family:var(--serif);font-weight:600;color:var(--danger);font-size:0.88rem;">Danger Zone — Permanent Action</span>
+    </div>
+    <div class="card-body" style="padding:28px;text-align:center;">
+      <div style="font-family:var(--serif);font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:10px;">Delete your account?</div>
+      <div style="font-size:0.82rem;color:var(--text-2);line-height:1.7;margin-bottom:24px;">
+        This will permanently delete your account for <strong>{{ request.user.username }}</strong>
+        and <strong>all your store data</strong> including customers, transactions,
+        and payment records. This action is <strong>irreversible</strong>.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <form method="post" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Yes, Delete My Account</button>
+        </form>
+        <a href="{% url 'dashboard' %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

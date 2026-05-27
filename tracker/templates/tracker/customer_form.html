@@ -1,0 +1,312 @@
+{% extends 'tracker/base.html' %}
+{% block title %}{% if customer %}Edit Customer{% else %}New Customer{% endif %} — UtangTracker{% endblock %}
+{% block topbar_title %}{% if customer %}Edit Customer{% else %}New Customer{% endif %}{% endblock %}
+{% block page_subtitle %}{% if customer %}{{ customer.name }}{% else %}Add account{% endif %}{% endblock %}
+
+{% block extra_styles %}
+<style>
+  /* ── Autocomplete dropdown ─────────────────────────────────── */
+  .ac-wrap { position: relative; }
+
+  .ac-dropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0; right: 0;
+    z-index: 200;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-sm);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+  }
+  .ac-dropdown.open { display: block; }
+
+  .ac-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.focused { background: var(--blue-light); }
+
+  .ac-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--navy-light);
+    color: var(--navy);
+    font-size: 0.72rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .ac-info { flex: 1; min-width: 0; }
+  .ac-name { font-size: 0.84rem; font-weight: 600; color: var(--text-1); }
+  .ac-phone { font-size: 0.7rem; color: var(--text-3); margin-top: 1px; }
+  .ac-hint {
+    font-size: 0.7rem; color: var(--text-3);
+    padding: 8px 12px;
+    text-align: center;
+  }
+
+  /* ── Duplicate warning banner ──────────────────────────────── */
+  .dup-warning {
+    display: none;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fffbeb;
+    border: 1.5px solid #f59e0b;
+    border-radius: var(--r-sm);
+    padding: 10px 12px;
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: #92400e;
+  }
+  .dup-warning.show { display: flex; }
+  .dup-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+  .dup-body { flex: 1; }
+  .dup-body strong { display: block; font-weight: 700; margin-bottom: 3px; color: #78350f; }
+  .dup-body a { color: var(--navy); font-weight: 600; text-decoration: underline; }
+
+  /* Input warning state */
+  .form-control.has-dup { border-color: #f59e0b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{% if customer %}{% url 'customer_detail' customer.pk %}{% else %}{% url 'customer_list' %}{% endif %}" class="back-link">
+    ← Back to {% if customer %}{{ customer.name }}{% else %}Customers{% endif %}
+  </a>
+</div>
+
+<div style="max-width:480px;">
+  <div class="card">
+    <div class="card-header">
+      <h3>{% if customer %}Edit Customer{% else %}New Customer{% endif %}</h3>
+    </div>
+    <div class="card-body">
+      <form method="post" id="customerForm">
+        {% csrf_token %}
+
+        {% for field in form %}
+        <div class="form-group{% if field.html_name == 'name' and not customer %} ac-wrap{% endif %}">
+          <label class="form-label">{{ field.label }}</label>
+
+          {% if field.html_name == 'name' %}
+            <input
+              type="text"
+              name="{{ field.html_name }}"
+              id="customerNameInput"
+              class="form-control {% if field.errors %}error{% endif %}"
+              value="{{ field.value|default:'' }}"
+              placeholder="{% if customer %}Customer name{% else %}Search existing or type a new name…{% endif %}"
+              autocomplete="off"
+            />
+            {% if not customer %}
+            <div class="ac-dropdown" id="acDropdown"></div>
+            <div class="dup-warning" id="dupWarning">
+              <span class="dup-icon">⚠️</span>
+              <div class="dup-body">
+                <strong id="dupTitle"></strong>
+                <span id="dupMsg"></span>
+              </div>
+            </div>
+            {% endif %}
+
+          {% elif field.field.widget.input_type == 'textarea' %}
+            <textarea
+              name="{{ field.html_name }}"
+              class="form-control {% if field.errors %}error{% endif %}"
+              rows="3"
+              placeholder="{{ field.help_text|default:'' }}"
+            >{{ field.value|default:'' }}</textarea>
+          {% else %}
+            <input
+              type="{{ field.field.widget.input_type|default:'text' }}"
+              name="{{ field.html_name }}"
+              class="form-control {% if field.errors %}error{% endif %}"
+              value="{{ field.value|default:'' }}"
+              placeholder="{{ field.help_text|default:'' }}"
+            />
+          {% endif %}
+
+          {% if field.errors %}
+            <div class="field-error">{{ field.errors.as_text|slice:"2:" }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="divider"></div>
+        <div style="display:flex;gap:8px;">
+          <button type="submit" class="btn btn-primary">
+            {% if customer %}Save Changes{% else %}Create Customer{% endif %}
+          </button>
+          <a href="{% if customer %}{% url 'customer_detail' customer.pk %}{% else %}{% url 'customer_list' %}{% endif %}" class="btn btn-ghost">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if not customer %}
+<script>
+(function () {
+  'use strict';
+
+  const nameInput = document.getElementById('customerNameInput');
+  const acDrop    = document.getElementById('acDropdown');
+  const dupWarn   = document.getElementById('dupWarning');
+  const dupTitle  = document.getElementById('dupTitle');
+  const dupMsg    = document.getElementById('dupMsg');
+
+  let acResults = [];
+  let focusIdx  = -1;
+
+  /* ── Utilities ─────────────────────────────────────────────── */
+  function debounce(fn, ms) {
+    let t;
+    return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  }
+
+  function escHtml(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function highlight(text, q) {
+    if (!q) return escHtml(text);
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i === -1) return escHtml(text);
+    return (
+      escHtml(text.slice(0, i)) +
+      `<mark style="background:rgba(37,99,235,0.15);border-radius:2px;padding:0 1px;">${escHtml(text.slice(i, i + q.length))}</mark>` +
+      escHtml(text.slice(i + q.length))
+    );
+  }
+
+  /* ── Dropdown render ───────────────────────────────────────── */
+  function renderDropdown(results, q) {
+    focusIdx = -1;
+    if (!results.length) {
+      acDrop.innerHTML = `<div class="ac-hint">No match for "<strong>${escHtml(q)}</strong>" — will create new customer</div>`;
+      acDrop.classList.add('open');
+      return;
+    }
+    acDrop.innerHTML = results.map((c, i) => `
+      <div class="ac-item" data-idx="${i}">
+        <div class="ac-avatar">${escHtml(c.name.charAt(0).toUpperCase())}</div>
+        <div class="ac-info">
+          <div class="ac-name">${highlight(c.name, q)}</div>
+          ${c.phone ? `<div class="ac-phone">📞 ${escHtml(c.phone)}</div>` : ''}
+        </div>
+      </div>`).join('');
+    acDrop.classList.add('open');
+
+    acDrop.querySelectorAll('.ac-item').forEach(el => {
+      el.addEventListener('mousedown', e => { e.preventDefault(); selectIdx(+el.dataset.idx); });
+    });
+  }
+
+  function closeDropdown() {
+    acDrop.classList.remove('open');
+    focusIdx = -1;
+  }
+
+  function selectIdx(i) {
+    const c = acResults[i];
+    if (!c) return;
+    nameInput.value = c.name;
+    closeDropdown();
+    showDuplicate(c);   // selecting an existing customer is itself a duplicate
+  }
+
+  /* ── Keyboard nav ──────────────────────────────────────────── */
+  nameInput.addEventListener('keydown', e => {
+    const items = acDrop.querySelectorAll('.ac-item');
+    if (!items.length || !acDrop.classList.contains('open')) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      focusIdx = Math.min(focusIdx + 1, items.length - 1);
+      setFocus(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      focusIdx = Math.max(focusIdx - 1, 0);
+      setFocus(items);
+    } else if (e.key === 'Enter' && focusIdx >= 0) {
+      e.preventDefault();
+      selectIdx(focusIdx);
+    } else if (e.key === 'Escape') {
+      closeDropdown();
+    }
+  });
+
+  function setFocus(items) {
+    items.forEach((el, i) => el.classList.toggle('focused', i === focusIdx));
+    if (focusIdx >= 0) items[focusIdx].scrollIntoView({ block: 'nearest' });
+  }
+
+  document.addEventListener('click', e => {
+    if (!nameInput.contains(e.target) && !acDrop.contains(e.target)) closeDropdown();
+  });
+
+  /* ── Duplicate banner ──────────────────────────────────────── */
+  function showDuplicate(c) {
+    nameInput.classList.add('has-dup');
+    dupTitle.textContent = `"${c.name}" already exists`;
+    dupMsg.innerHTML =
+      `This customer is already in your list. ` +
+      `<a href="/tracker/customers/${c.id}/">View account →</a> or ` +
+      `<a href="/tracker/customers/${c.id}/new-transaction/">add a transaction directly.</a>`;
+    dupWarn.classList.add('show');
+  }
+
+  function hideDuplicate() {
+    nameInput.classList.remove('has-dup');
+    dupWarn.classList.remove('show');
+  }
+
+  /* ── API calls ─────────────────────────────────────────────── */
+  const fetchAc = debounce(async q => {
+    if (q.length < 1) { closeDropdown(); return; }
+    try {
+      const r = await fetch(`/tracker/customers/autocomplete/?q=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      acResults = d.results || [];
+      renderDropdown(acResults, q);
+    } catch (_) {}
+  }, 180);
+
+  const checkDup = debounce(async name => {
+    if (!name) { hideDuplicate(); return; }
+    try {
+      const r = await fetch(`/tracker/customers/check-duplicate/?name=${encodeURIComponent(name)}`);
+      const d = await r.json();
+      if (d.exists) showDuplicate(d.customer);
+      else hideDuplicate();
+    } catch (_) {}
+  }, 400);
+
+  /* ── Wire up ───────────────────────────────────────────────── */
+  nameInput.addEventListener('input', () => {
+    const q = nameInput.value.trim();
+    if (!q) { closeDropdown(); hideDuplicate(); return; }
+    fetchAc(q);
+    checkDup(q);
+  });
+
+  nameInput.addEventListener('focus', () => {
+    const q = nameInput.value.trim();
+    if (q.length >= 1) fetchAc(q);
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

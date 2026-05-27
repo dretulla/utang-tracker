@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account — UtangTracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#EDE8E1;--surface:#FFFFFF;--surface-2:#F7F4F0;
+      --border:#DDD8D0;--border-2:#C8C2B8;
+      --navy:#1C2E4A;--navy-dark:#111E30;--navy-light:#E8EDF5;
+      --text:#1A1611;--text-2:#5C5449;--text-3:#9C9287;
+      --danger:#991B1B;--danger-bg:#FEF2F2;--danger-bd:#FECACA;
+      --success:#166534;--success-bg:#F0FDF4;--success-bd:#BBF7D0;
+      --serif:'Lora',Georgia,serif;--sans:'DM Sans',system-ui,sans-serif;
+      --r-sm:6px;--r-lg:14px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:15px;}
+    body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;}
+
+    .auth-nav{display:flex;align-items:center;justify-content:space-between;padding:0 36px;height:52px;background:var(--navy);position:sticky;top:0;z-index:10;}
+    .auth-nav-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+    .nav-dot{width:8px;height:8px;background:#3B82F6;border-radius:50%;}
+    .nav-brand-name{font-family:var(--serif);font-size:0.95rem;font-weight:600;color:#fff;letter-spacing:-0.01em;}
+    .auth-nav-links{display:flex;align-items:center;gap:6px;}
+    .nav-link-ghost{font-size:0.8rem;font-weight:500;color:rgba(255,255,255,0.7);text-decoration:none;padding:6px 12px;border-radius:var(--r-sm);transition:color 0.13s;}
+    .nav-link-ghost:hover{color:#fff;}
+    .nav-link-btn{font-size:0.8rem;font-weight:600;color:#fff;text-decoration:none;padding:6px 14px;background:var(--navy-dark);border-radius:var(--r-sm);border:1px solid rgba(255,255,255,0.15);transition:all 0.13s;}
+    .nav-link-btn:hover{background:rgba(255,255,255,0.1);}
+
+    .auth-body{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:36px 16px 48px;}
+    .outer{width:100%;max-width:480px;animation:rise 0.32s cubic-bezier(0.16,1,0.3,1);}
+    @keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+    .page-heading{text-align:center;margin-bottom:24px;}
+    .page-heading h1{font-family:var(--serif);font-size:1.8rem;font-weight:700;letter-spacing:-0.03em;color:var(--text);margin-bottom:5px;}
+    .page-heading p{font-size:0.85rem;color:var(--text-2);}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:28px 26px;box-shadow:0 4px 20px rgba(26,22,17,0.08),0 1px 4px rgba(26,22,17,0.04);}
+
+    .section-heading{font-family:var(--serif);font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+    .section-num{width:22px;height:22px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;font-family:var(--sans);flex-shrink:0;}
+
+    .field{margin-bottom:13px;}
+    .label{display:block;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-2);margin-bottom:5px;}
+    .inp-wrap{position:relative;}
+    .inp-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.82rem;color:var(--text-3);pointer-events:none;}
+    input.inp,select.inp,textarea.inp{
+      width:100%;padding:9px 12px 9px 32px;background:var(--surface-2);
+      border:1.5px solid var(--border);border-radius:var(--r-sm);
+      font-family:var(--sans);font-size:0.875rem;color:var(--text);
+      outline:none;transition:border-color 0.15s,box-shadow 0.15s;
+      -webkit-appearance:none;
+    }
+    select.inp{padding-left:10px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239C9287' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+    input.inp::placeholder,textarea.inp::placeholder{color:var(--text-3);}
+    input.inp:focus,select.inp:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(28,46,74,0.09);background:var(--surface);}
+    .field-err{font-size:0.7rem;color:var(--danger);margin-top:4px;}
+    .custom-q-wrap{display:none;margin-top:8px;}
+    .custom-q-wrap.show{display:block;}
+
+    .err-bar{background:var(--danger-bg);border:1px solid var(--danger-bd);border-radius:var(--r-sm);padding:9px 12px;font-size:0.8rem;color:var(--danger);margin-bottom:14px;display:flex;align-items:flex-start;gap:7px;}
+
+    .security-tip{background:var(--navy-light);border:1px solid #C5D1E5;border-radius:var(--r-sm);padding:10px 12px;font-size:0.75rem;color:var(--navy);margin-bottom:18px;display:flex;align-items:flex-start;gap:7px;line-height:1.5;}
+
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+    .divider{height:1px;background:var(--border);margin:20px 0;}
+
+    .btn-submit{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px;background:var(--text);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:0.9rem;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(26,22,17,0.18);transition:background 0.14s,transform 0.12s;}
+    .btn-submit:hover{background:#2d2820;transform:translateY(-1px);}
+    .btn-submit:active{transform:scale(0.98);}
+
+    .login-row{text-align:center;margin-top:14px;font-size:0.8rem;color:var(--text-2);}
+    .login-row a{color:var(--navy);font-weight:700;text-decoration:none;}
+    .login-row a:hover{text-decoration:underline;}
+
+    @media(max-width:480px){.grid-2{grid-template-columns:1fr;}.card{padding:22px 16px;}}
+  </style>
+</head>
+<body>
+  <nav class="auth-nav">
+    <a href="/" class="auth-nav-brand"><div class="nav-dot"></div><span class="nav-brand-name">UtangTracker</span></a>
+    <div class="auth-nav-links">
+      <a href="{% url 'login' %}" class="nav-link-ghost">Login</a>
+      <a href="{% url 'register' %}" class="nav-link-btn">Register</a>
+    </div>
+  </nav>
+
+  <div class="auth-body">
+    <div class="outer">
+      <div class="page-heading">
+        <h1>Create your account.</h1>
+        <p>Set up your store debt tracker in seconds.</p>
+      </div>
+
+      <div class="card">
+        {% if form.non_field_errors %}
+        <div class="err-bar">⚠ <span>{{ form.non_field_errors.as_text|slice:"2:" }}</span></div>
+        {% endif %}
+
+        <form method="post" autocomplete="off">
+          {% csrf_token %}
+
+          <!-- Step 1: Account Info -->
+          <div class="section-heading"><div class="section-num">1</div> Account Details</div>
+
+          <div class="field">
+            <label class="label">Username</label>
+            <div class="inp-wrap">
+              <input type="text" name="username" class="inp" placeholder="Choose a username"
+                value="{{ form.username.value|default:'' }}" autocomplete="username" />
+              <span class="inp-ico">👤</span>
+            </div>
+            {% if form.username.errors %}<div class="field-err">{{ form.username.errors.as_text|slice:"2:" }}</div>{% endif %}
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label class="label">Password</label>
+              <div class="inp-wrap">
+                <input type="password" name="password1" class="inp" placeholder="Create a password" autocomplete="new-password" />
+                <span class="inp-ico">🔒</span>
+              </div>
+              {% if form.password1.errors %}<div class="field-err">{{ form.password1.errors.as_text|slice:"2:" }}</div>{% endif %}
+            </div>
+            <div class="field">
+              <label class="label">Confirm Password</label>
+              <div class="inp-wrap">
+                <input type="password" name="password2" class="inp" placeholder="Confirm password" autocomplete="new-password" />
+                <span class="inp-ico">🔒</span>
+              </div>
+              {% if form.password2.errors %}<div class="field-err">{{ form.password2.errors.as_text|slice:"2:" }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Step 2: Security Questions -->
+          <div class="section-heading"><div class="section-num">2</div> Account Recovery Setup</div>
+
+          <div class="security-tip">
+            🔐 Choose two security questions. These will be used to verify your identity if you ever forget your password. Answers are not case-sensitive.
+          </div>
+
+          <!-- Q1 -->
+          <div class="field">
+            <label class="label">Security Question 1</label>
+            <select name="question_1" class="inp" id="q1Select">
+              {% for val, label in form.question_1.field.choices %}
+              <option value="{{ val }}" {% if form.question_1.value == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            {% if form.question_1.errors %}<div class="field-err">{{ form.question_1.errors.as_text|slice:"2:" }}</div>{% endif %}
+          </div>
+          <div class="custom-q-wrap" id="customQ1Wrap">
+            <div class="field" style="margin-bottom:0;">
+              <label class="label">Your custom question</label>
+              <input type="text" name="custom_question_1" class="inp" placeholder="Write your question here…"
+                value="{{ form.custom_question_1.value|default:'' }}" style="padding-left:12px;" />
+              {% if form.custom_question_1.errors %}<div class="field-err">{{ form.custom_question_1.errors.as_text|slice:"2:" }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Your Answer</label>
+            <div class="inp-wrap">
+              <input type="text" name="answer_1" class="inp" placeholder="Your answer (not case-sensitive)"
+                value="{{ form.answer_1.value|default:'' }}" autocomplete="off" />
+              <span class="inp-ico">💬</span>
+            </div>
+            {% if form.answer_1.errors %}<div class="field-err">{{ form.answer_1.errors.as_text|slice:"2:" }}</div>{% endif %}
+          </div>
+
+          <div style="height:14px;"></div>
+
+          <!-- Q2 -->
+          <div class="field">
+            <label class="label">Security Question 2</label>
+            <select name="question_2" class="inp" id="q2Select">
+              {% for val, label in form.question_2.field.choices %}
+              <option value="{{ val }}" {% if form.question_2.value == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            {% if form.question_2.errors %}<div class="field-err">{{ form.question_2.errors.as_text|slice:"2:" }}</div>{% endif %}
+          </div>
+          <div class="custom-q-wrap" id="customQ2Wrap">
+            <div class="field" style="margin-bottom:0;">
+              <label class="label">Your custom question</label>
+              <input type="text" name="custom_question_2" class="inp" placeholder="Write your question here…"
+                value="{{ form.custom_question_2.value|default:'' }}" style="padding-left:12px;" />
+              {% if form.custom_question_2.errors %}<div class="field-err">{{ form.custom_question_2.errors.as_text|slice:"2:" }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Your Answer</label>
+            <div class="inp-wrap">
+              <input type="text" name="answer_2" class="inp" placeholder="Your answer (not case-sensitive)"
+                value="{{ form.answer_2.value|default:'' }}" autocomplete="off" />
+              <span class="inp-ico">💬</span>
+            </div>
+            {% if form.answer_2.errors %}<div class="field-err">{{ form.answer_2.errors.as_text|slice:"2:" }}</div>{% endif %}
+          </div>
+
+          <div class="divider"></div>
+          <button type="submit" class="btn-submit">Create Account →</button>
+        </form>
+
+        <div class="login-row">Already have an account? <a href="{% url 'login' %}">Sign in →</a></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleCustom(selectId, wrapId) {
+      const sel = document.getElementById(selectId);
+      const wrap = document.getElementById(wrapId);
+      sel.addEventListener('change', () => {
+        wrap.classList.toggle('show', sel.value === 'custom');
+      });
+      // Init on load
+      if (sel.value === 'custom') wrap.classList.add('show');
+    }
+    toggleCustom('q1Select', 'customQ1Wrap');
+    toggleCustom('q2Select', 'customQ2Wrap');
+  </script>
+</body>
+</html>

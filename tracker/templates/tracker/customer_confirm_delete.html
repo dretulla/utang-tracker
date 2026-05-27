@@ -1,0 +1,31 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Delete {{ customer.name }} — UtangTracker{% endblock %}
+{% block topbar_title %}Delete Customer{% endblock %}
+{% block page_subtitle %}Confirm action{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{% url 'customer_detail' customer.pk %}" class="back-link">← Back to {{ customer.name }}</a>
+</div>
+
+<div style="max-width:420px;">
+  <div class="card">
+    <div class="card-body" style="padding:28px;text-align:center;">
+      <div style="width:56px;height:56px;background:var(--danger-bg);border:1.5px solid var(--danger-bd);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin:0 auto 18px;">🗑</div>
+      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:8px;">Delete "{{ customer.name }}"?</div>
+      <div style="font-size:0.82rem;color:var(--text-2);line-height:1.6;margin-bottom:24px;">
+        This will permanently delete <strong>{{ customer.name }}</strong> and all their
+        <strong>{{ customer.transaction_count }} transaction{{ customer.transaction_count|pluralize }}</strong>.
+        This action cannot be undone.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <form method="post" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        </form>
+        <a href="{% url 'customer_detail' customer.pk %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

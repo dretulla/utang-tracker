@@ -1,0 +1,391 @@
+{% extends 'tracker/base.html' %}
+
+{% block title %}{{ customer.name }} — UtangTracker{% endblock %}
+{% block topbar_title %}{{ customer.name }}{% endblock %}
+{% block page_subtitle %}Customer Profile{% endblock %}
+
+{% block topbar_actions %}
+<div class="cust-menu-wrap">
+  <button class="cust-icon-btn" id="custMenuBtn" onclick="toggleCustMenu()" title="More options" aria-label="More options">⋯</button>
+  <div class="cust-dropdown-menu" id="custMenu">
+    <a href="{% url 'customer_edit' customer.pk %}" class="cust-menu-item">✏️ Edit Customer</a>
+    <a href="{% url 'customer_delete' customer.pk %}" class="cust-menu-item cust-menu-danger">🗑 Delete Customer</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block topbar_sub %}{% endblock %}
+
+{% block extra_styles %}
+<style>
+
+.profile-wrapper{
+    width:100%;
+}
+
+.profile-grid{
+    display:flex;
+    gap:24px;
+    align-items:flex-start;
+    width:100%;
+}
+
+.profile-sidebar{
+    width:280px;
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+}
+
+.profile-content{
+    flex:1;
+    min-width:0;
+}
+
+.info-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--r-lg);
+    overflow:hidden;
+    box-shadow:var(--shadow-sm);
+}
+
+.info-card-header{
+    padding:14px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.profile-avatar{
+    width:44px;
+    height:44px;
+    border-radius:11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    flex-shrink:0;
+}
+
+.profile-name{
+    font-size:0.95rem;
+    font-weight:700;
+}
+
+.profile-phone{
+    font-size:0.72rem;
+    color:var(--text-2);
+}
+
+.info-row{
+    padding:10px 14px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+}
+
+.info-row:last-child{
+    border-bottom:none;
+}
+
+.info-key{
+    font-size:0.68rem;
+    text-transform:uppercase;
+    font-weight:700;
+    color:var(--text-3);
+}
+
+.info-val{
+    font-size:0.8rem;
+    font-weight:600;
+}
+
+.balance-box{
+    background:var(--navy-light);
+    border-radius:var(--r-lg);
+    padding:18px;
+    text-align:center;
+}
+
+.balance-lbl{
+    font-size:0.65rem;
+    text-transform:uppercase;
+    margin-bottom:6px;
+}
+
+.balance-val{
+    font-size:1.9rem;
+    font-weight:700;
+}
+
+.filter-form{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:flex-end;
+}
+
+.filter-group{
+    flex:1;
+    min-width:150px;
+}
+
+.empty-state{ padding:50px 20px; text-align:center; }
+
+/* ── Topbar ⋯ menu ── */
+.cust-menu-wrap { position:relative; }
+.cust-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:var(--r-sm); background:var(--surface-2); border:1px solid var(--border); font-size:1.1rem; cursor:pointer; transition:background 0.13s; letter-spacing:0.05em; }
+.cust-icon-btn:hover { background:var(--border); }
+.cust-dropdown-menu { display:none; position:fixed; top:58px; right:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); box-shadow:var(--shadow); min-width:180px; z-index:500; overflow:hidden; }
+.cust-dropdown-menu.open { display:block; }
+.cust-menu-item { display:block; padding:11px 16px; font-size:0.83rem; font-weight:500; color:var(--text); text-decoration:none; transition:background 0.1s; }
+.cust-menu-item:hover { background:var(--surface-2); }
+.cust-menu-danger { color:var(--danger); }
+.cust-menu-danger:hover { background:var(--danger-bg); }
+
+
+@media (max-width:1024px){
+
+    .profile-grid{
+        flex-direction:column;
+    }
+
+    .profile-sidebar{
+        width:100%;
+    }
+}
+
+@media (max-width: 760px) {
+    .profile-grid { flex-direction: column; gap: 16px; }
+    .profile-sidebar, .profile-content { width: 100%; }
+    .info-card { border-radius: 14px; }
+    .info-card-header { flex-wrap: wrap; align-items: flex-start; }
+    .info-card-header > div { min-width: 0; }
+    .profile-name { font-size: 1rem; }
+    .balance-box { padding: 16px; }
+    .balance-val { font-size: 1.6rem; }
+    .info-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .filter-form { flex-direction: column; }
+    .filter-group { width: 100%; }
+    .filter-form button, .filter-form .btn { width: 100%; }
+
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="profile-wrapper">
+
+    <div style="margin-bottom:16px;">
+        <a href="{% url 'customer_list' %}" class="back-link">
+            ← Back to Customers
+        </a>
+    </div>
+
+    <div class="profile-grid">
+
+        <!-- SIDEBAR -->
+        <div class="profile-sidebar">
+
+            <div class="info-card">
+
+                <div class="info-card-header">
+
+                    <div class="profile-avatar {% if is_high %}high{% endif %}"
+                        style="background:{% if is_high %}var(--danger-bg){% else %}var(--navy-light){% endif %};
+                        color:{% if is_high %}var(--danger){% else %}var(--navy){% endif %};">
+
+                        {{ customer.name|slice:":1"|upper }}
+
+                    </div>
+
+                    <div>
+                        <div class="profile-name">
+                            {{ customer.name }}
+                        </div>
+
+                        <div class="profile-phone">
+                            {% if customer.phone %}
+                                {{ customer.phone }}
+                            {% else %}
+                                No phone
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="info-row">
+                    <span class="info-key">Member since</span>
+                    <span class="info-val">{{ customer.created_at|date:"M d, Y" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-key">Total charged</span>
+                    <span class="info-val">₱{{ total_charged|floatformat:2 }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-key">Total paid</span>
+                    <span class="info-val">₱{{ total_paid|floatformat:2 }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-key">Transactions</span>
+                    <span class="info-val">{{ customer.transaction_count }}</span>
+                </div>
+
+            </div>
+
+            <div class="balance-box">
+
+                <div class="balance-lbl">
+                    Outstanding Balance
+                </div>
+
+                <div class="balance-val">
+                    ₱{{ balance|floatformat:2 }}
+                </div>
+
+            </div>
+
+
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="profile-content">
+
+            <!-- FILTER -->
+            <div class="card" style="margin-bottom:16px;">
+
+                <div class="card-body" style="padding:16px;">
+
+                    <form method="get" class="filter-form">
+
+                        <div class="filter-group">
+                            <div class="form-label">From</div>
+
+                            <input type="date"
+                                   name="date_from"
+                                   value="{{ date_from }}"
+                                   class="form-control">
+                        </div>
+
+                        <div class="filter-group">
+                            <div class="form-label">To</div>
+
+                            <input type="date"
+                                   name="date_to"
+                                   value="{{ date_to }}"
+                                   class="form-control">
+                        </div>
+
+                        <div class="filter-group">
+                            <div class="form-label">Status</div>
+
+                            <select name="status" class="form-control">
+
+                                <option value="">All</option>
+
+                                <option value="unpaid"
+                                {% if status_filter == 'unpaid' %}selected{% endif %}>
+                                    Unpaid
+                                </option>
+
+                                <option value="partial"
+                                {% if status_filter == 'partial' %}selected{% endif %}>
+                                    Partial
+                                </option>
+
+                                <option value="paid"
+                                {% if status_filter == 'paid' %}selected{% endif %}>
+                                    Paid
+                                </option>
+
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            Filter
+                        </button>
+
+                        <a href="{% url 'customer_detail' customer.pk %}"
+                           class="btn btn-ghost">
+                            Clear
+                        </a>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+            <!-- TRANSACTIONS -->
+            <div class="card">
+
+                <div class="card-header">
+                    <h3>Transactions</h3>
+                    <span style="font-size:0.72rem;color:var(--text-2);">{{ transactions|length }} record{{ transactions|length|pluralize }}</span>
+                </div>
+
+                {% if transactions %}
+                    {% for txn in transactions %}
+                    <a href="{% url 'transaction_detail' txn.pk %}" style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background 0.1s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">
+                        <div class="avatar {% if txn.status == 'paid' %}paid{% elif txn.status == 'partial' %}partial{% else %}high{% endif %}" style="width:36px;height:36px;font-size:0.8rem;border-radius:10px;flex-shrink:0;">
+                            {{ txn.date|date:"d" }}
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:0.84rem;font-weight:700;">{{ txn.date|date:"M d, Y" }} <span style="color:var(--text-3);font-size:0.75em;">{{ txn.time|time:"g:i A" }}</span></div>
+                            <div style="font-size:0.68rem;color:var(--text-2);margin-top:2px;">{{ txn.items.count }} item{{ txn.items.count|pluralize }} · #{{ txn.pk }}</div>
+                        </div>
+                        <div style="text-align:right;flex-shrink:0;">
+                            <div style="font-family:var(--mono);font-size:0.82rem;font-weight:700;color:{% if txn.remaining_balance > 0 %}var(--danger){% else %}var(--success){% endif %};">
+                                {% if txn.status == 'paid' %}—{% else %}₱{{ txn.remaining_balance|floatformat:2 }}{% endif %}
+                            </div>
+                            {% if txn.status == 'paid' %}<span class="status-pill status-paid" style="font-size:0.6rem;">Paid</span>
+                            {% elif txn.status == 'partial' %}<span class="status-pill status-partial" style="font-size:0.6rem;">Partial</span>
+                            {% else %}<span class="status-pill status-unpaid" style="font-size:0.6rem;">Unpaid</span>{% endif %}
+                        </div>
+                    </a>
+                    {% endfor %}
+
+                {% else %}
+
+                <div class="empty-state">
+                    <div style="font-size:2rem;margin-bottom:10px;">📋</div>
+                    <p>No transactions found.</p>
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function toggleCustMenu() {
+    document.getElementById('custMenu').classList.toggle('open');
+  }
+  document.addEventListener('click', function(e) {
+    const wrap = document.querySelector('.cust-menu-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('custMenu').classList.remove('open');
+    }
+  });
+</script>
+{% endblock %}

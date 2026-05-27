@@ -1,0 +1,418 @@
+{% extends 'tracker/base.html' %}
+{% block title %}New Transaction — UtangTracker{% endblock %}
+{% block topbar_title %}New Transaction{% endblock %}
+{% block page_subtitle %}Create record{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .txn-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* ── Customer card: allow dropdown to overflow the card boundary ── */
+  #customerCard { overflow: visible; }
+
+  /* ── Customer combobox ── */
+  .cust-combo-wrap { position: relative; }
+  .cust-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    z-index: 200;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+    max-height: 240px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* smooth momentum scrolling on iOS */
+    overscroll-behavior: contain;      /* prevent scroll from leaking to page */
+    display: none;
+  }
+  .cust-dropdown.open { display: block; }
+  @media (max-width: 600px) {
+    .cust-dropdown {
+      max-height: 200px; /* a bit shorter so it stays within viewport on small screens */
+    }
+  }
+  .cust-drop-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .cust-drop-item:last-child { border-bottom: none; }
+  .cust-drop-item:hover, .cust-drop-item.focused { background: var(--accent-light); }
+  .cust-drop-avatar {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--navy-light);
+    color: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 700;
+    flex-shrink: 0; font-family: var(--serif);
+  }
+  .cust-drop-name { font-size: 0.83rem; font-weight: 600; color: var(--text); }
+  .cust-drop-phone { font-size: 0.72rem; color: var(--text-2); margin-top: 1px; }
+
+  /* ── Items table ── */
+  .item-header {
+    display: grid;
+    grid-template-columns: 2fr 80px 80px 100px 36px;
+    gap: 8px;
+    padding: 0 4px 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .item-header span {
+    font-size: 0.62rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-3);
+  }
+  .item-row {
+    display: grid;
+    grid-template-columns: 2fr 80px 80px 100px 36px;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .item-row .form-control { padding: 9px 10px; font-size: 0.83rem; }
+
+  .remove-btn {
+    width: 36px; height: 36px;
+    background: var(--surface-2);
+    color: var(--text-3);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-sm);
+    font-size: 1.1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.13s, color 0.13s, border-color 0.13s;
+    flex-shrink: 0; line-height: 1;
+  }
+  .remove-btn:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-bd); }
+
+  .add-row-wrap {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+  }
+  .add-row-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none;
+    color: var(--accent); font-family: var(--sans);
+    font-size: 0.83rem; font-weight: 600;
+    cursor: pointer; padding: 6px 2px;
+    transition: opacity 0.15s;
+  }
+  .add-row-btn:hover { opacity: 0.75; }
+  .add-row-btn .plus-circle {
+    width: 22px; height: 22px;
+    background: var(--accent-light);
+    border: 1.5px solid var(--accent-muted);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; color: var(--accent); line-height: 1; flex-shrink: 0;
+  }
+
+  /* ── Summary box ── */
+  .totals-box {
+    background: var(--navy-light);
+    border: 1px solid rgba(27,58,107,0.1);
+    border-radius: var(--r); padding: 16px;
+  }
+  .total-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; margin-bottom: 8px; }
+  .total-row:last-child { margin-bottom: 0; border-top: 1.5px solid rgba(27,58,107,0.15); padding-top: 10px; margin-top: 4px; font-weight: 700; font-size: 0.9rem; }
+  .total-row span:last-child { font-family: var(--mono); font-weight: 700; color: var(--navy); }
+
+  @media (max-width: 860px) {
+    .txn-grid { grid-template-columns: 1fr; }
+    .item-header, .item-row { grid-template-columns: 2fr 72px 72px 90px 36px; }
+  }
+  @media (max-width: 480px) {
+    .item-header { display: none; }
+    .item-row { grid-template-columns: 1fr 60px 60px 80px 36px; gap: 5px; }
+  }
+  /* Hide global FAB on this page — it blocks 'Add another item' */
+  .fab-global { display: none !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{% url 'dashboard' %}" class="back-link">← Back to Dashboard</a>
+</div>
+
+<form method="post" id="txnForm">
+{% csrf_token %}
+<div class="txn-grid">
+
+  <!-- Left: main form -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- Customer -->
+    <div class="card" id="customerCard">
+      <div class="card-header"><h3>Customer</h3></div>
+      <div class="card-body">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Customer Name *</label>
+          <div class="cust-combo-wrap">
+            <input
+              type="text"
+              name="customer_name"
+              id="customerName"
+              class="form-control"
+              placeholder="Type or choose a customer…"
+              value="{{ post.customer_name|default:prefill_customer_name }}"
+              autocomplete="off"
+              required
+            />
+            <div class="cust-dropdown" id="custDropdown"></div>
+          </div>
+        </div>
+        <div class="form-group mb-0" style="margin-top:12px;">
+          <label class="form-label">Phone (optional)</label>
+          <input type="text" name="customer_phone" id="customerPhone" class="form-control"
+            placeholder="e.g. 09xxxxxxxxx"
+            value="{{ post.customer_phone|default:prefill_customer_phone }}" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Items -->
+    <div class="card">
+      <div class="card-header"><h3>Items</h3></div>
+      <div class="card-body">
+        <div class="item-header">
+          <span>Item Name</span>
+          <span>Unit</span>
+          <span>Qty</span>
+          <span>Price (₱)</span>
+          <span></span>
+        </div>
+        <div id="itemsContainer">
+          <div class="item-row">
+            <input type="text"   name="item_name" class="form-control item-name" placeholder="Item name" />
+            <select name="unit" class="form-control item-unit">
+              <option value="qty">Qty</option>
+              <option value="kg">Kg</option>
+            </select>
+            <input type="number" name="quantity" class="form-control item-qty" placeholder="1" min="0.01" step="any" value="1" />
+            <input type="number" name="price"    class="form-control item-price" placeholder="0.00" min="0" step="0.01" />
+            <button type="button" class="remove-btn" onclick="removeRow(this)" title="Remove">×</button>
+          </div>
+        </div>
+        <div class="add-row-wrap">
+          <button type="button" id="addItemBtn" class="add-row-btn">
+            <span class="plus-circle">+</span> Add another item
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Additional Details -->
+    <div class="card">
+      <div class="card-header"><h3>Additional Details</h3></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" name="date" class="form-control" value="{{ today }}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Time</label>
+          <input type="time" name="time" class="form-control" value="{{ post.time|default:'' }}" />
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Notes (optional)</label>
+          <textarea name="notes" class="form-control" rows="2" placeholder="Add a note…">{{ post.notes|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Promise to Pay -->
+    <div class="card">
+      <div class="card-header">
+        <h3>🤝 Promise to Pay</h3>
+        <span style="font-size:0.72rem;color:var(--text-2);">Optional</span>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Promise Date</label>
+          <input type="date" name="promise_date" class="form-control" value="{{ post.promise_date|default:'' }}" />
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Promise Time (optional)</label>
+          <input type="time" name="promise_time" class="form-control" value="{{ post.promise_time|default:'' }}" />
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right: summary -->
+  <div style="position:sticky;top:calc(var(--topbar-h) + 16px);display:flex;flex-direction:column;gap:14px;">
+    <div class="card">
+      <div class="card-header"><h3>Summary</h3></div>
+      <div class="card-body">
+        <div class="totals-box">
+          <div class="total-row"><span>Items</span><span id="itemCount">0</span></div>
+          <div class="total-row"><span>Subtotal</span><span id="subtotalVal">₱0.00</span></div>
+          <div class="total-row"><span>Total Amount</span><span id="totalVal">₱0.00</span></div>
+        </div>
+        <div style="margin-top:16px;">
+          <button type="submit" class="btn btn-navy btn-full btn-lg">Create Transaction →</button>
+          <a href="{% url 'dashboard' %}" class="btn btn-ghost btn-full" style="margin-top:7px;">Cancel</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // ── All customers for instant dropdown ──
+  const ALL_CUSTOMERS = {{ existing_customers|safe }};
+
+  const nameInput    = document.getElementById('customerName');
+  const phoneInput   = document.getElementById('customerPhone');
+  const custDropdown = document.getElementById('custDropdown');
+  let focusIdx = -1;
+
+  function escHtml(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function highlight(text, q) {
+    if (!q) return escHtml(text);
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i === -1) return escHtml(text);
+    return escHtml(text.slice(0,i))
+      + `<mark style="background:rgba(37,99,235,0.15);border-radius:2px;padding:0 1px;">${escHtml(text.slice(i,i+q.length))}</mark>`
+      + escHtml(text.slice(i+q.length));
+  }
+
+  function filterCustomers(q) {
+    if (!q) return ALL_CUSTOMERS.slice(0, 8);
+    const ql = q.toLowerCase();
+    const starts   = ALL_CUSTOMERS.filter(c => c.name.toLowerCase().startsWith(ql));
+    const contains = ALL_CUSTOMERS.filter(c => !c.name.toLowerCase().startsWith(ql) && c.name.toLowerCase().includes(ql));
+    return [...starts, ...contains].slice(0, 8);
+  }
+
+  function renderDropdown(items, q) {
+    if (!items.length) { closeDropdown(); return; }
+    custDropdown.innerHTML = items.map((c, i) => {
+      const phone = c.phone ? `<div class="cust-drop-phone">📞 ${escHtml(c.phone)}</div>` : '';
+      return `<div class="cust-drop-item" data-i="${i}" data-name="${escHtml(c.name)}" data-phone="${escHtml(c.phone||'')}">
+        <div class="cust-drop-avatar">${escHtml(c.name[0].toUpperCase())}</div>
+        <div><div class="cust-drop-name">${highlight(c.name, q)}</div>${phone}</div>
+      </div>`;
+    }).join('');
+    custDropdown.querySelectorAll('.cust-drop-item').forEach(el => {
+      // touchend fires before blur on mobile — pick the item without keyboard dismissing first
+      el.addEventListener('touchend', e => {
+        e.preventDefault();
+        nameInput.value  = el.dataset.name;
+        phoneInput.value = el.dataset.phone;
+        closeDropdown();
+        nameInput.blur();
+      });
+      // mousedown for desktop — preventDefault stops the input losing focus before the click
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        nameInput.value  = el.dataset.name;
+        phoneInput.value = el.dataset.phone;
+        closeDropdown();
+      });
+    });
+    custDropdown.classList.add('open');
+    focusIdx = -1;
+  }
+
+  function closeDropdown() { custDropdown.classList.remove('open'); focusIdx = -1; }
+
+  nameInput.addEventListener('focus', () => {
+    renderDropdown(filterCustomers(nameInput.value.trim()), nameInput.value.trim());
+  });
+  nameInput.addEventListener('input', () => {
+    renderDropdown(filterCustomers(nameInput.value.trim()), nameInput.value.trim());
+  });
+  nameInput.addEventListener('keydown', e => {
+    const items = custDropdown.querySelectorAll('.cust-drop-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); focusIdx = Math.min(focusIdx+1, items.length-1); updateFocus(items); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); focusIdx = Math.max(focusIdx-1, 0); updateFocus(items); }
+    else if (e.key === 'Enter' && focusIdx >= 0) {
+      e.preventDefault();
+      const el = items[focusIdx];
+      nameInput.value  = el.dataset.name;
+      phoneInput.value = el.dataset.phone;
+      closeDropdown();
+    }
+    else if (e.key === 'Escape') closeDropdown();
+  });
+  document.addEventListener('click', e => {
+    if (!nameInput.contains(e.target) && !custDropdown.contains(e.target)) closeDropdown();
+  });
+  function updateFocus(items) {
+    items.forEach((el, i) => el.classList.toggle('focused', i === focusIdx));
+    if (focusIdx >= 0) items[focusIdx].scrollIntoView({block:'nearest'});
+  }
+
+  // ── Items ──
+  document.getElementById('addItemBtn').addEventListener('click', addRow);
+
+  function addRow() {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `
+      <input type="text"   name="item_name" class="form-control item-name" placeholder="Item name" />
+      <select name="unit" class="form-control item-unit">
+        <option value="qty">Qty</option>
+        <option value="kg">Kg</option>
+      </select>
+      <input type="number" name="quantity" class="form-control item-qty" placeholder="1" min="0.01" step="any" value="1" />
+      <input type="number" name="price"    class="form-control item-price" placeholder="0.00" min="0" step="0.01" />
+      <button type="button" class="remove-btn" onclick="removeRow(this)" title="Remove">×</button>
+    `;
+    document.getElementById('itemsContainer').appendChild(row);
+    row.querySelector('.item-name').focus();
+    bindCalc(row);
+    calcTotal();
+  }
+
+  function removeRow(btn) {
+    const rows = document.querySelectorAll('.item-row');
+    if (rows.length <= 1) { btn.closest('.item-row').querySelectorAll('input').forEach(i => i.value=''); calcTotal(); return; }
+    btn.closest('.item-row').remove();
+    calcTotal();
+  }
+
+  function bindCalc(row) {
+    row.querySelectorAll('input, select').forEach(inp => inp.addEventListener('input', calcTotal));
+  }
+
+  function calcTotal() {
+    let total = 0, count = 0;
+    document.querySelectorAll('.item-row').forEach(row => {
+      const qty   = parseFloat(row.querySelector('.item-qty').value)   || 0;
+      const price = parseFloat(row.querySelector('.item-price').value) || 0;
+      const name  = row.querySelector('.item-name').value.trim();
+      if (name && qty > 0) { total += qty * price; count++; }
+    });
+    document.getElementById('itemCount').textContent   = count;
+    document.getElementById('subtotalVal').textContent = '₱' + total.toFixed(2);
+    document.getElementById('totalVal').textContent    = '₱' + total.toFixed(2);
+  }
+
+  document.querySelectorAll('.item-row').forEach(bindCalc);
+  calcTotal();
+</script>
+{% endblock %}

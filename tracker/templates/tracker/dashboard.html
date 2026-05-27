@@ -1,0 +1,443 @@
+{% extends 'tracker/base.html' %}
+
+{% block title %}Dashboard — UtangTracker{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Overview{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.15s, transform 0.15s;
+  }
+  .stat-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+  }
+  .stat-card.c-red::after    { background: linear-gradient(90deg, #DC2626, #EF4444); }
+  .stat-card.c-blue::after   { background: linear-gradient(90deg, #2563EB, #3B82F6); }
+  .stat-card.c-orange::after { background: linear-gradient(90deg, #D97706, #F59E0B); }
+  .stat-card.c-teal::after   { background: linear-gradient(90deg, #0D7377, #14B8A6); }
+
+  .stat-card.featured {
+    display: flex; align-items: center; gap: 16px;
+    background: linear-gradient(135deg, #EBF0F8 0%, #fff 60%);
+  }
+  .stat-ico {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  .ico-red    { background: var(--danger-bg); }
+  .ico-blue   { background: #EFF6FF; }
+  .ico-orange { background: #FFFBEB; }
+  .ico-teal   { background: var(--teal-light); }
+
+  .stat-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-2); margin-bottom: 4px; }
+  .stat-value { font-size: 1.6rem; font-weight: 800; font-family: var(--mono); letter-spacing: -0.04em; color: var(--text); line-height: 1; }
+  .stat-card.featured .stat-value { font-size: 1.85rem; }
+  .stat-sub { font-size: 0.68rem; color: var(--text-3); margin-top: 4px; }
+
+  /* Small stat cards: icon on top-right, value big on left */
+  .stat-card:not(.featured) {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 110px;
+  }
+  .stat-card:not(.featured) .stat-ico {
+    align-self: flex-start;
+    margin-bottom: 10px;
+    width: 38px; height: 38px; font-size: 1rem;
+  }
+
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .section-hd {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-hd h3 { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+
+  .debtor-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none; color: inherit;
+    transition: background 0.1s;
+  }
+  .debtor-row:last-child { border-bottom: none; }
+  .debtor-row:hover { background: var(--surface-2); }
+  .rank { font-size: 0.62rem; font-weight: 700; color: var(--text-3); font-family: var(--mono); width: 16px; text-align: center; flex-shrink: 0; }
+  .debtor-info { flex: 1; min-width: 0; }
+  .debtor-name { font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .debtor-meta { font-size: 0.68rem; color: var(--text-2); margin-top: 1px; }
+  .debtor-amt  { font-family: var(--mono); font-size: 0.82rem; font-weight: 700; color: var(--danger); flex-shrink: 0; }
+
+
+
+  @media (max-width: 1050px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .stat-card.featured { grid-column: 1 / -1; }
+    .bottom-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .bottom-grid { grid-template-columns: 1fr; gap: 18px; width: 100%; max-width: 100%; }
+    .bottom-grid > div, .bottom-grid .card { width: 100%; max-width: 100%; min-width: 0; }
+    .table-wrap { width: 100%; max-width: 100%; overflow-x: hidden; }
+    .table-wrap table { width: 100%; min-width: 0; }
+    .table-wrap table { display: block; }
+    .table-wrap thead { display: none; }
+    .table-wrap tbody { display: block; }
+    .table-wrap tbody tr {
+      display: block;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .table-wrap tbody td {
+      display: flex !important;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      white-space: normal;
+      gap: 12px;
+    }
+    .table-wrap tbody td:last-child { border-bottom: none; }
+    .table-wrap tbody td[data-label]::before {
+      content: attr(data-label);
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+  }
+
+  /* ── Promise mobile/desktop toggle ── */
+  .promise-mobile { display: none; }
+  .promise-desktop { display: block; }
+  .recent-mobile { display: none; }
+  .recent-desktop { display: block; }
+  @media (max-width: 760px) {
+    .promise-desktop { display: none !important; }
+    .promise-mobile { display: block !important; }
+    .recent-desktop { display: none !important; }
+    .recent-mobile { display: block !important; }
+  }
+
+  /* ── Promise-to-pay monitor ── */
+  .promise-alert-banner {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px;
+    border-radius: var(--r-lg);
+    margin-bottom: 20px;
+    font-size: 0.82rem; font-weight: 600;
+    border: 1.5px solid;
+  }
+  .promise-alert-banner.has-overdue {
+    background: #fef2f2; border-color: #fca5a5; color: #991b1b;
+  }
+  .promise-alert-banner.has-today {
+    background: #fffbeb; border-color: #fcd34d; color: #92400e;
+  }
+  .promise-table th, .promise-table td {
+    padding: 11px 14px; font-size: 0.8rem;
+  }
+  .promise-table thead { background: var(--surface-2); }
+  .promise-table tbody tr { border-top: 1px solid var(--border); transition: background 0.1s; }
+  .promise-table tbody tr:hover { background: var(--surface-2); }
+  .promise-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 20px;
+    font-size: 0.7rem; font-weight: 700; white-space: nowrap;
+  }
+  .promise-overdue  { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+  .promise-today    { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+  .promise-soon     { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
+  .promise-upcoming { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .promise-overdue-row  { background: #fff5f5 !important; }
+  .promise-today-row    { background: #fffdf0 !important; }
+  .pulse-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    animation: pulse-ring 1.4s ease-in-out infinite;
+  }
+  .dot-red    { background: #ef4444; box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+  .dot-yellow { background: #f59e0b; box-shadow: 0 0 0 0 rgba(245,158,11,0.5); }
+  @keyframes pulse-ring {
+    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.55); }
+    70%  { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{% url 'transaction_create' %}" class="btn btn-primary btn-sm">+ New Transaction</a>
+  <a href="{% url 'customer_list' %}" class="btn btn-ghost btn-sm">Customers</a>
+  <a href="{% url 'reports' %}" class="btn btn-ghost btn-sm">Reports</a>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Welcome back, {{ request.user.username }} 👋</h1>
+    <p>Here's your store overview for today.</p>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-grid">
+  <!-- Featured card -->
+  <div class="stat-card featured c-red">
+    <div class="stat-ico ico-red">💸</div>
+    <div>
+      <div class="stat-label">Total Outstanding</div>
+      <div class="stat-value">₱{{ total_debt|floatformat:2 }}</div>
+      <div class="stat-sub">Across all active debts</div>
+    </div>
+  </div>
+  <div class="stat-card c-blue">
+    <div class="stat-ico ico-blue">👥</div>
+    <div>
+      <div class="stat-label">Customers</div>
+      <div class="stat-value">{{ customer_count }}</div>
+      <div class="stat-sub">Registered</div>
+    </div>
+  </div>
+  <div class="stat-card c-orange">
+    <div class="stat-ico ico-orange">⚠</div>
+    <div>
+      <div class="stat-label">Unpaid</div>
+      <div class="stat-value">{{ unpaid_count }}</div>
+      <div class="stat-sub">Need attention</div>
+    </div>
+  </div>
+</div>
+
+{% if promise_items %}
+  {% if overdue_count %}
+  <div class="promise-alert-banner has-overdue">
+    <span class="pulse-dot dot-red"></span>
+    {{ overdue_count }} promise{{ overdue_count|pluralize }} to pay
+    {% if overdue_count == 1 %}is{% else %}are{% endif %}
+    <strong>overdue</strong> — follow up now!
+  </div>
+  {% elif due_today_count %}
+  <div class="promise-alert-banner has-today">
+    <span class="pulse-dot dot-yellow"></span>
+    {{ due_today_count }} payment{{ due_today_count|pluralize }} promised for <strong>today</strong> — check in with your debtor{{ due_today_count|pluralize }}.
+  </div>
+  {% endif %}
+{% endif %}
+
+<!-- Bottom grid -->
+<div class="bottom-grid">
+
+  {% if promise_items %}
+  <!-- Promise-to-Pay Monitor -->
+  <div>
+    <div class="section-hd">
+      <h3>🤝 Promise-to-Pay Monitor</h3>
+      <span style="font-size:0.72rem;color:var(--text-2);">{{ promise_items|length }} active promise{{ promise_items|length|pluralize }}</span>
+    </div>
+    <!-- Desktop table -->
+    <div class="card promise-desktop">
+      <div class="table-wrap">
+        <table class="promise-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Transaction</th>
+              <th>Promise Date &amp; Time</th>
+              <th>Balance</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in promise_items %}
+            <tr class="{% if p.status_cls == 'promise-overdue' %}promise-overdue-row{% elif p.status_cls == 'promise-today' %}promise-today-row{% endif %}">
+              <td data-label="Customer">
+                <div style="display:flex;align-items:center;gap:9px;">
+                  <div class="avatar {% if p.txn.status == 'partial' %}partial{% else %}high{% endif %}">
+                    {{ p.txn.customer.name|slice:":1"|upper }}
+                  </div>
+                  <div>
+                    <div style="font-weight:600;font-size:0.82rem;">
+                      <a href="{% url 'customer_detail' p.txn.customer.pk %}" style="color:inherit;text-decoration:none;">{{ p.txn.customer.name }}</a>
+                    </div>
+                    {% if p.txn.customer.phone %}
+                    <div style="font-size:0.68rem;color:var(--text-2);">{{ p.txn.customer.phone }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td data-label="Transaction" style="font-size:0.78rem;color:var(--text-2);font-family:var(--mono);">#{{ p.txn.pk }}</td>
+              <td data-label="Promise" style="font-size:0.78rem;">
+                <span style="font-family:var(--mono);font-weight:600;">{{ p.txn.promise_date }}</span>
+                {% if p.txn.promise_time %}
+                <span style="color:var(--text-3);margin-left:5px;">{{ p.txn.promise_time|time:"g:i A" }}</span>
+                {% endif %}
+              </td>
+              <td data-label="Balance" style="font-family:var(--mono);font-weight:700;color:var(--danger);">₱{{ p.txn.remaining_balance|floatformat:2 }}</td>
+              <td data-label="Status">
+                <span class="promise-badge {{ p.status_cls }}">
+                  {% if p.status_cls == 'promise-overdue' %}⚠{% elif p.status_cls == 'promise-today' %}🔔{% elif p.status_cls == 'promise-soon' %}⏳{% else %}📅{% endif %}
+                  {{ p.status_label }}
+                </span>
+              </td>
+              <td data-label="Action">
+                <a href="{% url 'transaction_detail' p.txn.pk %}" class="btn btn-ghost btn-sm btn-icon" title="View">→</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mobile activity-style rows -->
+    <div class="card promise-mobile">
+      {% for p in promise_items %}
+      <a href="{% url 'transaction_detail' p.txn.pk %}" style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background 0.1s;{% if p.status_cls == 'promise-overdue' %}background:#fff5f5;{% elif p.status_cls == 'promise-today' %}background:#fffdf0;{% endif %}">
+        <div class="avatar {% if p.txn.status == 'partial' %}partial{% else %}high{% endif %}" style="width:36px;height:36px;font-size:0.8rem;border-radius:10px;flex-shrink:0;">
+          {{ p.txn.customer.name|slice:":1"|upper }}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.84rem;font-weight:700;">{{ p.txn.customer.name }}</div>
+          <div style="font-size:0.68rem;color:var(--text-2);margin-top:2px;">
+            Promise: {{ p.txn.promise_date }}{% if p.txn.promise_time %} · {{ p.txn.promise_time|time:"g:i A" }}{% endif %} · #{{ p.txn.pk }}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:var(--mono);font-size:0.82rem;font-weight:700;color:var(--danger);">₱{{ p.txn.remaining_balance|floatformat:2 }}</div>
+          <span class="promise-badge {{ p.status_cls }}" style="font-size:0.6rem;margin-top:3px;display:inline-flex;">
+            {% if p.status_cls == 'promise-overdue' %}⚠{% elif p.status_cls == 'promise-today' %}🔔{% elif p.status_cls == 'promise-soon' %}⏳{% else %}📅{% endif %}
+            {{ p.status_label }}
+          </span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent Transactions -->
+  <div>
+    <div class="section-hd">
+      <h3>Recent Transactions</h3>
+      <a href="{% url 'transaction_list' %}" class="back-link">View all →</a>
+    </div>
+
+    {% if recent_txns %}
+    <!-- Desktop table -->
+    <div class="card recent-desktop">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th class="td-right">Total</th>
+              <th class="td-right">Balance</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for txn in recent_txns %}
+            <tr>
+              <td data-label="Customer">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div class="avatar {% if txn.status == 'paid' %}paid{% elif txn.status == 'partial' %}partial{% else %}high{% endif %}">
+                    {{ txn.customer.name|slice:":1"|upper }}
+                  </div>
+                  <div>
+                    <div style="font-weight:600;font-size:0.82rem;">{{ txn.customer.name }}</div>
+                    <div style="font-size:0.68rem;color:var(--text-2);">#{{ txn.pk }}</div>
+                  </div>
+                </div>
+              </td>
+              <td data-label="Date" class="td-muted td-mono" style="font-size:0.78rem;">{{ txn.date }}</td>
+              <td data-label="Status">
+                {% if txn.status == 'paid' %}<span class="status-pill status-paid">Paid</span>
+                {% elif txn.status == 'partial' %}<span class="status-pill status-partial">Partial</span>
+                {% else %}<span class="status-pill status-unpaid">Unpaid</span>{% endif %}
+              </td>
+              <td data-label="Total" class="td-mono td-right">₱{{ txn.total_amount|floatformat:2 }}</td>
+              <td data-label="Balance" class="td-mono td-right {% if txn.status == 'paid' %}td-success{% else %}td-danger{% endif %}">
+                {% if txn.status == 'paid' %}—{% else %}₱{{ txn.remaining_balance|floatformat:2 }}{% endif %}
+              </td>
+              <td><a href="{% url 'transaction_detail' txn.pk %}" class="btn btn-ghost btn-sm btn-icon">→</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mobile activity-style rows -->
+    <div class="card recent-mobile">
+      {% for txn in recent_txns %}
+      <a href="{% url 'transaction_detail' txn.pk %}" style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background 0.1s;">
+        <div class="avatar {% if txn.status == 'paid' %}paid{% elif txn.status == 'partial' %}partial{% else %}high{% endif %}" style="width:36px;height:36px;font-size:0.8rem;border-radius:10px;flex-shrink:0;">
+          {{ txn.customer.name|slice:":1"|upper }}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.84rem;font-weight:700;">{{ txn.customer.name }}</div>
+          <div style="font-size:0.68rem;color:var(--text-2);margin-top:2px;">{{ txn.date }} · {{ txn.items.count }} item{{ txn.items.count|pluralize }} · #{{ txn.pk }}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:var(--mono);font-size:0.82rem;font-weight:700;color:{% if txn.remaining_balance > 0 %}var(--danger){% else %}var(--success){% endif %};">
+            {% if txn.status == 'paid' %}—{% else %}₱{{ txn.remaining_balance|floatformat:2 }}{% endif %}
+          </div>
+          {% if txn.status == 'paid' %}<span class="status-pill status-paid" style="font-size:0.6rem;">Paid</span>
+          {% elif txn.status == 'partial' %}<span class="status-pill status-partial" style="font-size:0.6rem;">Partial</span>
+          {% else %}<span class="status-pill status-unpaid" style="font-size:0.6rem;">Unpaid</span>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="card">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>No transactions yet.<br>Create your first one!</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

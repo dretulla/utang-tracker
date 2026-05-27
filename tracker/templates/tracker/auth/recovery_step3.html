@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset Password — UtangTracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#EDE8E1;--surface:#FFFFFF;--surface-2:#F7F4F0;--border:#DDD8D0;--navy:#1C2E4A;--text:#1A1611;--text-2:#5C5449;--text-3:#9C9287;--danger:#991B1B;--danger-bg:#FEF2F2;--danger-bd:#FECACA;--success:#166534;--success-bg:#F0FDF4;--success-bd:#BBF7D0;--serif:'Lora',Georgia,serif;--sans:'DM Sans',system-ui,sans-serif;--r-sm:6px;--r-lg:14px;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:15px;}
+    body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;}
+    .auth-nav{display:flex;align-items:center;justify-content:space-between;padding:0 36px;height:52px;background:var(--navy);}
+    .auth-nav-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+    .nav-dot{width:8px;height:8px;background:#3B82F6;border-radius:50%;}
+    .nav-brand-name{font-family:var(--serif);font-size:0.95rem;font-weight:600;color:#fff;}
+    .auth-body{flex:1;display:flex;align-items:center;justify-content:center;padding:36px 16px;}
+    .outer{width:100%;max-width:400px;animation:rise 0.32s cubic-bezier(0.16,1,0.3,1);}
+    @keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+    .steps{display:flex;align-items:center;justify-content:center;margin-bottom:28px;}
+    .step-wrap{display:flex;flex-direction:column;align-items:center;}
+    .step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;font-family:var(--sans);border:2px solid var(--border);background:var(--surface);color:var(--text-3);}
+    .step-circle.active{border-color:var(--navy);background:var(--navy);color:#fff;}
+    .step-circle.done{border-color:#BBF7D0;background:#F0FDF4;color:#166534;}
+    .step-label{font-size:0.65rem;font-weight:600;color:var(--text-3);margin-top:4px;white-space:nowrap;}
+    .step-label.active{color:var(--navy);}
+    .step-label.done{color:#166534;}
+    .step-line{width:48px;height:2px;background:var(--border);margin:0 4px;margin-bottom:22px;}
+    .step-line.done{background:#BBF7D0;}
+
+    .page-heading{text-align:center;margin-bottom:24px;}
+    .page-heading h1{font-family:var(--serif);font-size:1.7rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:6px;}
+    .page-heading p{font-size:0.85rem;color:var(--text-2);}
+    .user-chip{display:inline-flex;align-items:center;gap:6px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:20px;padding:3px 12px 3px 8px;font-size:0.78rem;font-weight:600;color:#166534;margin-top:8px;}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:28px 26px;box-shadow:0 4px 20px rgba(26,22,17,0.08),0 1px 4px rgba(26,22,17,0.04);}
+
+    .verified-banner{background:var(--success-bg);border:1px solid var(--success-bd);border-radius:var(--r-sm);padding:10px 13px;font-size:0.8rem;color:var(--success);margin-bottom:18px;display:flex;align-items:center;gap:8px;font-weight:500;}
+
+    .field{margin-bottom:14px;}
+    .label{display:block;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-2);margin-bottom:5px;}
+    .inp-wrap{position:relative;}
+    .inp-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.82rem;color:var(--text-3);pointer-events:none;}
+    .show-pw{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:0.78rem;color:var(--text-3);cursor:pointer;user-select:none;padding:4px;}
+    .show-pw:hover{color:var(--navy);}
+    input.inp{width:100%;padding:10px 36px 10px 32px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:var(--sans);font-size:0.875rem;color:var(--text);outline:none;transition:border-color 0.15s,box-shadow 0.15s;-webkit-appearance:none;}
+    input.inp::placeholder{color:var(--text-3);}
+    input.inp:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(28,46,74,0.09);background:var(--surface);}
+    .field-err{font-size:0.7rem;color:var(--danger);margin-top:4px;}
+
+    /* Password strength */
+    .pw-strength{margin-top:7px;}
+    .pw-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:4px;}
+    .pw-fill{height:100%;border-radius:2px;transition:width 0.25s,background 0.25s;}
+    .pw-text{font-size:0.68rem;color:var(--text-3);}
+
+    .pw-rules{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;}
+    .pw-rule{font-size:0.67rem;display:flex;align-items:center;gap:3px;color:var(--text-3);}
+    .pw-rule.ok{color:var(--success);}
+    .pw-rule-dot{width:5px;height:5px;border-radius:50%;background:var(--border);flex-shrink:0;}
+    .pw-rule.ok .pw-rule-dot{background:var(--success);}
+
+    .btn-submit{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px;background:var(--text);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:0.9rem;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(26,22,17,0.15);transition:background 0.14s,transform 0.12s;margin-top:6px;}
+    .btn-submit:hover{background:#2d2820;transform:translateY(-1px);}
+    .btn-submit:active{transform:scale(0.98);}
+    .divider{height:1px;background:var(--border);margin:16px 0;}
+  </style>
+</head>
+<body>
+  <nav class="auth-nav">
+    <a href="/" class="auth-nav-brand"><div class="nav-dot"></div><span class="nav-brand-name">UtangTracker</span></a>
+  </nav>
+
+  <div class="auth-body">
+    <div class="outer">
+      <div class="steps">
+        <div class="step-wrap">
+          <div class="step-circle done">✓</div>
+          <div class="step-label done">Username</div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step-wrap">
+          <div class="step-circle done">✓</div>
+          <div class="step-label done">Questions</div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step-wrap">
+          <div class="step-circle active">3</div>
+          <div class="step-label active">New Password</div>
+        </div>
+      </div>
+
+      <div class="page-heading">
+        <h1>Set new password.</h1>
+        <p>Identity verified for</p>
+        <div class="user-chip">✓ {{ username }}</div>
+      </div>
+
+      <div class="card">
+        <div class="verified-banner">✓ Identity verified successfully. Choose a strong new password.</div>
+
+        {% if form.non_field_errors %}
+        <div style="background:var(--danger-bg);border:1px solid var(--danger-bd);border-radius:6px;padding:9px 12px;font-size:0.8rem;color:var(--danger);margin-bottom:14px;display:flex;gap:7px;">⚠ <span>{{ form.non_field_errors.as_text|slice:"2:" }}</span></div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="field">
+            <label class="label">New Password</label>
+            <div class="inp-wrap">
+              <input type="password" name="new_password1" id="pw1" class="inp" placeholder="Enter new password" autocomplete="new-password" />
+              <span class="inp-ico">🔒</span>
+              <span class="show-pw" onclick="togglePw('pw1',this)">Show</span>
+            </div>
+            {% if form.new_password1.errors %}<div class="field-err">{{ form.new_password1.errors.as_text|slice:"2:" }}</div>{% endif %}
+            <div class="pw-strength">
+              <div class="pw-bar"><div class="pw-fill" id="pwFill" style="width:0%;background:#DDD8D0;"></div></div>
+              <div class="pw-text" id="pwText">Enter a password</div>
+            </div>
+            <div class="pw-rules">
+              <div class="pw-rule" id="rule-len"><div class="pw-rule-dot"></div>8+ characters</div>
+              <div class="pw-rule" id="rule-upper"><div class="pw-rule-dot"></div>Uppercase letter</div>
+              <div class="pw-rule" id="rule-num"><div class="pw-rule-dot"></div>Number</div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Confirm New Password</label>
+            <div class="inp-wrap">
+              <input type="password" name="new_password2" id="pw2" class="inp" placeholder="Confirm new password" autocomplete="new-password" />
+              <span class="inp-ico">🔒</span>
+              <span class="show-pw" onclick="togglePw('pw2',this)">Show</span>
+            </div>
+            {% if form.new_password2.errors %}<div class="field-err">{{ form.new_password2.errors.as_text|slice:"2:" }}</div>{% endif %}
+          </div>
+          <div class="divider"></div>
+          <button type="submit" class="btn-submit">Reset Password →</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      btn.textContent = inp.type === 'password' ? 'Show' : 'Hide';
+    }
+
+    const pw1 = document.getElementById('pw1');
+    const fill = document.getElementById('pwFill');
+    const pwText = document.getElementById('pwText');
+
+    pw1.addEventListener('input', () => {
+      const v = pw1.value;
+      let score = 0;
+      const hasLen = v.length >= 8;
+      const hasUpper = /[A-Z]/.test(v);
+      const hasNum = /[0-9]/.test(v);
+      const hasSpecial = /[^A-Za-z0-9]/.test(v);
+      if (hasLen) score++;
+      if (hasUpper) score++;
+      if (hasNum) score++;
+      if (hasSpecial) score++;
+
+      document.getElementById('rule-len').classList.toggle('ok', hasLen);
+      document.getElementById('rule-upper').classList.toggle('ok', hasUpper);
+      document.getElementById('rule-num').classList.toggle('ok', hasNum);
+
+      const colors = ['#DDD8D0','#DC2626','#D97706','#2563EB','#166534'];
+      const labels = ['','Weak','Fair','Good','Strong'];
+      const pcts   = ['0%','25%','50%','75%','100%'];
+      fill.style.width = pcts[score] || '0%';
+      fill.style.background = colors[score] || '#DDD8D0';
+      pwText.textContent = score > 0 ? labels[score] : 'Enter a password';
+      pwText.style.color = colors[score] || 'var(--text-3)';
+    });
+  </script>
+</body>
+</html>

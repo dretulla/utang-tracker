@@ -1,0 +1,300 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Customers — UtangTracker{% endblock %}
+{% block topbar_title %}Customers{% endblock %}
+{% block page_subtitle %}All Accounts{% endblock %}
+
+{% block extra_styles %}
+<style>
+  /* ── Search bar ── */
+  .search-wrap {
+    position: relative;
+    max-width: 420px;
+    margin-bottom: 24px;
+  }
+  .search-wrap .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.85rem;
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-muted);
+  }
+  .search-input::placeholder { color: var(--text-3); }
+
+  /* ── Customer grid ── */
+  .customer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── Customer card ── */
+  .cust-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 0;
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.18s, transform 0.18s, border-color 0.18s;
+    overflow: hidden;
+    position: relative;
+  }
+  .cust-card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-3px);
+    border-color: var(--accent-muted);
+  }
+  .cust-card:active { transform: translateY(-1px); }
+
+  /* High-debt accent — left border only, no top strip */
+  .cust-card.high-debt { border-color: var(--danger-bd); }
+
+  /* ── Card body ── */
+  .cust-card-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+
+  /* ── Top row: avatar + name ── */
+  .cust-top { display: flex; align-items: center; gap: 12px; }
+  .cust-avatar {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif);
+    font-weight: 700; font-size: 1.1rem;
+    flex-shrink: 0;
+    background: var(--navy-light);
+    color: var(--navy);
+    letter-spacing: -0.02em;
+  }
+  .cust-avatar.danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+  }
+  .cust-identity { flex: 1; min-width: 0; }
+  .cust-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: capitalize;
+  }
+  .cust-phone {
+    font-size: 0.75rem;
+    color: var(--text-2);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .badge-high {
+    flex-shrink: 0;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--danger-bd);
+    font-size: 0.58rem;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* ── Stats row ── */
+  .cust-stats {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+  .cust-stat {
+    flex: 1;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .cust-stat + .cust-stat {
+    border-left: 1px solid var(--border);
+  }
+  .cust-stat-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--text-3);
+  }
+  .cust-stat-value {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .cust-stat-value.debt { color: var(--danger); }
+  .cust-stat-value.ok   { color: var(--success); }
+
+  /* ── Card footer ── */
+  .cust-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 2px;
+  }
+  .cust-since {
+    font-size: 0.68rem;
+    color: var(--text-3);
+  }
+  .cust-view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 4px 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: gap 0.15s;
+  }
+  .cust-card:hover .cust-view-btn { gap: 8px; }
+
+  /* ── Empty state ── */
+  .empty-state { padding: 60px 20px; text-align: center; }
+  .empty-icon  { font-size: 2.5rem; margin-bottom: 12px; }
+
+  /* ── Results summary ── */
+  .results-count {
+    font-size: 0.78rem;
+    color: var(--text-3);
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+  .results-count strong { color: var(--text-2); }
+
+  @media (max-width: 600px) {
+    .customer-grid { grid-template-columns: 1fr; gap: 12px; }
+    .cust-card-body { padding: 14px 16px 16px; }
+  }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Customers</h1>
+    <p>Manage your store customers and their balances.</p>
+  </div>
+</div>
+
+<!-- Search bar -->
+<div class="search-wrap">
+  <form method="get" style="margin:0;">
+    <span class="search-icon">🔍</span>
+    <input
+      type="text"
+      name="q"
+      value="{{ query }}"
+      class="search-input"
+      placeholder="Search by name or phone…"
+      autocomplete="off"
+    />
+  </form>
+</div>
+
+{% if customer_data %}
+  <div class="results-count">
+    Showing <strong>{{ customer_data|length }}</strong> customer{{ customer_data|length|pluralize }}
+    {% if query %} for "<strong>{{ query }}</strong>"{% endif %}
+  </div>
+
+  <div class="customer-grid">
+    {% for item in customer_data %}
+    <a href="{% url 'customer_detail' item.customer.pk %}" class="cust-card {% if item.is_high %}high-debt{% endif %}">
+      <div class="cust-card-body">
+
+        <!-- Top: avatar + name + badge -->
+        <div class="cust-top">
+          <div class="cust-avatar {% if item.is_high %}danger{% endif %}">
+            {{ item.customer.name|slice:":1"|upper }}
+          </div>
+          <div class="cust-identity">
+            <div class="cust-name">{{ item.customer.name }}</div>
+            <div class="cust-phone">
+              {% if item.customer.phone %}
+                <span>📞</span>{{ item.customer.phone }}
+              {% else %}
+                <span style="color:var(--text-3);font-style:italic;">No phone</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if item.is_high %}<span class="badge-high">High Debt</span>{% endif %}
+        </div>
+
+        <!-- Stats pill -->
+        <div class="cust-stats">
+          <div class="cust-stat">
+            <span class="cust-stat-label">Balance</span>
+            <span class="cust-stat-value {% if item.balance > 0 %}debt{% elif item.balance < 0 %}ok{% endif %}">
+              ₱{{ item.balance|floatformat:2 }}
+            </span>
+          </div>
+          <div class="cust-stat">
+            <span class="cust-stat-label">Transactions</span>
+            <span class="cust-stat-value">{{ item.customer.transaction_count }}</span>
+          </div>
+        </div>
+
+        <!-- Footer: date + view link -->
+        <div class="cust-footer">
+          <span class="cust-since">Since {{ item.customer.created_at|date:"M d, Y" }}</span>
+          <span class="cust-view-btn">View details <span>→</span></span>
+        </div>
+
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+{% else %}
+  <div class="card">
+    <div class="empty-state">
+      <div class="empty-icon">👥</div>
+      <p style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:6px;">
+        {% if query %}No customers match "{{ query }}"{% else %}No customers yet{% endif %}
+      </p>
+      <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:20px;">
+        {% if query %}Try a different name or phone number.{% else %}Add your first transaction to create a customer account.{% endif %}
+      </p>
+      {% if not query %}
+        <a href="{% url 'transaction_create' %}" class="btn btn-primary">+ New Transaction</a>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

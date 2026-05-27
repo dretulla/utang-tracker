@@ -1,0 +1,430 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Transaction #{{ txn.pk }} — UtangTracker{% endblock %}
+{% block topbar_title %}Transaction #{{ txn.pk }}{% endblock %}
+{% block page_subtitle %}{{ txn.customer.name }}{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .txn-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    align-items: start;
+  }
+  .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+  /* Items table — always a proper table, never stacked */
+  .items-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .items-table-wrap table { min-width: 380px; }
+
+  @media (max-width: 860px) {
+    .txn-layout { grid-template-columns: 1fr; }
+  }
+  /* Bottom sheet open states */
+  #paySheetOverlay.open { display:block !important; opacity:1; }
+  #paySheet.open { bottom:0 !important; }
+  .chip { display:inline-flex;align-items:center;justify-content:center; }
+
+  @media (max-width: 760px) {
+    .txn-layout { gap: 14px; }
+    .card { border-radius: 14px; }
+    .card-header, .card-body { padding: 16px; }
+    .card-header h3 { font-size: 1rem; }
+    .progress-bar { height: 5px; }
+    /* Hide the inline Record Payment card on mobile — FAB sheet handles it */
+    .record-payment-card { display: none; }
+  }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{% url 'transaction_receipt' txn.receipt_token %}" class="btn btn-ghost btn-sm" target="_blank" title="View Receipt & QR">🧾 Receipt</a>
+  <a href="{% url 'transaction_delete' txn.pk %}" class="btn btn-danger-ghost btn-sm">🗑 Delete</a>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+  <a href="{% url 'customer_detail' txn.customer.pk %}" class="back-link">← {{ txn.customer.name }}</a>
+  <span style="color:var(--text-3);font-size:0.75rem;">/</span>
+  <span style="font-size:0.75rem;color:var(--text-2);">Transaction #{{ txn.pk }}</span>
+  {% if txn.status == 'paid' %}
+    <span class="status-pill status-paid">Paid</span>
+  {% elif txn.status == 'partial' %}
+    <span class="status-pill status-partial">Partially Paid</span>
+  {% else %}
+    <span class="status-pill status-unpaid">Unpaid</span>
+  {% endif %}
+  {% if txn.status != 'paid' %}
+  <form method="post" action="{% url 'mark_paid' txn.pk %}" onsubmit="return confirm('Mark this as fully paid?');" style="display:inline;margin-left:auto;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-success btn-sm" style="white-space:nowrap;">✓ Mark as Paid</button>
+  </form>
+  {% endif %}
+</div>
+
+
+<div class="txn-layout">
+
+  <!-- Left -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- Items card -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Items Purchased</h3>
+        <span style="font-size:0.72rem;color:var(--text-2);">{{ items|length }} item{{ items|length|pluralize }}</span>
+      </div>
+      <div class="items-table-wrap">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th style="text-align:right;">Qty</th>
+              <th style="text-align:right;">Unit</th>
+              <th style="text-align:right;">Price</th>
+              <th style="text-align:right;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td style="font-weight:500;">{{ item.item_name }}</td>
+              <td class="amount" style="color:var(--text-2);">{{ item.quantity }}</td>
+              <td class="amount" style="color:var(--text-2);">{{ item.get_unit_display }}</td>
+              <td class="amount">₱{{ item.price|floatformat:2 }}</td>
+              <td class="amount" style="font-weight:600;">₱{{ item.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="padding:10px 10px;">Total</td>
+              <td class="amount" style="padding:10px 10px;color:var(--navy);">₱{{ txn.total_amount|floatformat:2 }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Payments card -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Payment History</h3>
+        <span style="font-size:0.72rem;color:var(--text-2);">{{ payments|length }} payment{{ payments|length|pluralize }}</span>
+      </div>
+      {% if payments %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date &amp; Time</th>
+              <th>Note</th>
+              <th class="td-right">Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in payments %}
+            <tr>
+              <td data-label="Date & Time" class="td-mono" style="font-size:0.78rem;">
+                {{ p.date }}
+                {% if p.paid_time %}
+                <span style="color:var(--text-3);margin-left:4px;">{{ p.paid_time|time:"g:i A" }}</span>
+                {% else %}
+                <span style="color:var(--text-3);margin-left:4px;">{{ p.created_at|time:"g:i A" }}</span>
+                {% endif %}
+              </td>
+              <td data-label="Note" class="td-muted" style="font-size:0.78rem;">{{ p.note|default:"—" }}</td>
+              <td data-label="Amount" class="td-mono td-right td-success">₱{{ p.amount|floatformat:2 }}</td>
+              <td data-label="Action">
+                <form method="post" action="{% url 'payment_delete' p.pk %}" onsubmit="return confirm('Delete this payment?');" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger-ghost btn-sm btn-icon" title="Delete">×</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:24px;">
+        <div class="empty-icon">💳</div>
+        <p>No payments recorded yet.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Add payment (always visible for partial payments) -->
+    <div class="card record-payment-card">
+      <div class="card-header"><h3>Record Payment</h3></div>
+      <div class="card-body">
+        <form method="post" action="{% url 'payment_add' txn.pk %}">
+          {% csrf_token %}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div class="form-group mb-0">
+              <label class="form-label">Amount (₱)</label>
+              <div class="amount-wrap">
+                <span class="amount-prefix">₱</span>
+                <input type="number" name="amount" class="form-control" step="0.01" min="0.01"
+                  placeholder="0.00" required />
+              </div>
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label">Payment Date</label>
+              <input type="date" name="date" class="form-control"
+                value="{{ payment_form.date.value|default:'' }}" required />
+            </div>
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">Time <span style="font-size:0.72rem;color:var(--text-3);font-weight:400;">(12-hr, e.g. 2:30 PM)</span></label>
+            <input type="time" name="paid_time" class="form-control"
+              value="{{ payment_form.paid_time.value|default:'' }}" />
+          </div>
+          <div class="form-group mb-0" style="margin-top:12px;">
+            <label class="form-label">Note (optional)</label>
+            <input type="text" name="note" class="form-control" placeholder="e.g. Cash payment" />
+          </div>
+          <div style="margin-top:14px;">
+            <button type="submit" class="btn btn-success">✓ Record Payment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- New Transaction CTA (only when fully paid) -->
+    {% if txn.status == 'paid' %}
+    <div class="card" style="border:2px solid var(--success);background:var(--success-bg,#f0fdf4);">
+      <div class="card-body" style="padding:18px;text-align:center;">
+        <div style="font-size:1.4rem;margin-bottom:6px;">🎉</div>
+        <div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;color:var(--success);">Balance fully settled!</div>
+        <div style="font-size:0.78rem;color:var(--text-2);margin-bottom:14px;">{{ txn.customer.name }} has no outstanding balance on this transaction.</div>
+        <a href="{% url 'new_transaction_for_customer' txn.customer.pk %}" class="btn btn-primary btn-full">
+          + New Transaction for {{ txn.customer.name }}
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Right sidebar -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+
+    <!-- Receipt / QR Card -->
+    <div class="card" style="text-align:center;">
+      <div class="card-header"><h3>🧾 Receipt & QR Code</h3></div>
+      <div class="card-body" style="padding:20px;">
+        <p style="font-size:0.75rem;color:var(--text-2);margin-bottom:14px;line-height:1.5;">
+          Share this receipt with your customer. They can scan the QR to view their debt details anytime.
+        </p>
+        <a href="{% url 'transaction_receipt' txn.receipt_token %}" target="_blank"
+           class="btn btn-primary btn-full" style="margin-bottom:10px;">
+          🔍 View Receipt & QR
+        </a>
+        <div style="font-size:0.68rem;color:var(--text-3);word-break:break-all;background:var(--surface-2);padding:8px;border-radius:8px;font-family:var(--mono);">
+          /receipt/{{ txn.receipt_token|slice:":8" }}…
+        </div>
+      </div>
+    </div>
+
+    <!-- Balance summary -->
+    <div class="card">
+      <div class="card-header"><h3>Balance</h3></div>
+      <div class="card-body" style="padding:20px;">
+        {% with pct=txn.total_paid|floatformat:0 %}
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-size:0.7rem;color:var(--text-2);font-weight:600;">PAID</span>
+            <span style="font-size:0.7rem;font-weight:700;color:var(--success);font-family:var(--mono);">₱{{ txn.total_paid|floatformat:2 }}</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill"
+              style="width:{% if txn.total_amount > 0 %}{% widthratio txn.total_paid txn.total_amount 100 %}{% else %}0{% endif %}%;background:var(--success);"></div>
+          </div>
+        </div>
+        {% endwith %}
+
+        <div style="text-align:center;">
+          <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.09em;font-weight:700;color:var(--text-2);margin-bottom:6px;">Outstanding</div>
+          <div style="font-size:1.9rem;font-weight:700;font-family:var(--mono);letter-spacing:-0.04em;color:{% if txn.remaining_balance > 0 %}var(--danger){% else %}var(--success){% endif %};">
+            ₱{{ txn.remaining_balance|floatformat:2 }}
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;">
+            <span style="color:var(--text-2);">Total charged</span>
+            <span style="font-family:var(--mono);font-weight:600;">₱{{ txn.total_amount|floatformat:2 }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;">
+            <span style="color:var(--text-2);">Payments made</span>
+            <span style="font-family:var(--mono);font-weight:600;color:var(--success);">₱{{ txn.total_paid|floatformat:2 }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transaction info -->
+    <div class="card">
+      <div class="card-header"><h3>Details</h3></div>
+      <div>
+        <div class="info-row" style="padding:9px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.8rem;">
+          <span style="color:var(--text-2);">Customer</span>
+          <a href="{% url 'customer_detail' txn.customer.pk %}" style="font-weight:600;color:var(--blue);text-decoration:none;">{{ txn.customer.name }}</a>
+        </div>
+        <div class="info-row" style="padding:9px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.8rem;">
+          <span style="color:var(--text-2);">Date</span>
+          <span style="font-family:var(--mono);font-size:0.78rem;">{{ txn.date }} {{ txn.time|time:"g:i A" }}</span>
+        </div>
+        <div class="info-row" style="padding:9px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.8rem;">
+          <span style="color:var(--text-2);">Status</span>
+          {% if txn.status == 'paid' %}
+            <span class="status-pill status-paid">Paid</span>
+          {% elif txn.status == 'partial' %}
+            <span class="status-pill status-partial">Partial</span>
+          {% else %}
+            <span class="status-pill status-unpaid">Unpaid</span>
+          {% endif %}
+        </div>
+        {% if txn.notes %}
+        <div style="padding:9px 16px;font-size:0.78rem;color:var(--text-2);border-bottom:1px solid var(--border);">
+          <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:var(--text-3);margin-bottom:4px;">Notes</div>
+          {{ txn.notes }}
+        </div>
+        {% endif %}
+        <div style="padding:9px 16px;display:flex;justify-content:space-between;font-size:0.8rem;">
+          <span style="color:var(--text-2);">Created</span>
+          <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text-2);">{{ txn.created_at|date:"M d, Y" }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Promise to Pay -->
+    <div class="card">
+      <div class="card-header"><h3>🤝 Promise to Pay</h3></div>
+      <div class="card-body" style="padding:14px;">
+        {% if txn.promise_date %}
+        <div style="margin-bottom:10px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r-sm);">
+          <div style="font-size:0.65rem;text-transform:uppercase;font-weight:700;color:#b45309;letter-spacing:0.07em;margin-bottom:3px;">Promised on</div>
+          <div style="font-family:var(--mono);font-size:0.85rem;font-weight:700;">
+            {{ txn.promise_date }}
+            {% if txn.promise_time %}<span style="color:var(--text-2);margin-left:6px;">{{ txn.promise_time|time:"g:i A" }}</span>{% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px;">No promise date set.</div>
+        {% endif %}
+        <form method="post" action="{% url 'update_promise' txn.pk %}">
+          {% csrf_token %}
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" name="promise_date" class="form-control" value="{{ txn.promise_date|default:'' }}" />
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">Time (optional)</label>
+            <input type="time" name="promise_time" class="form-control" value="{{ txn.promise_time|default:'' }}" />
+          </div>
+          <div style="margin-top:10px;">
+            <button type="submit" class="btn btn-outline btn-sm btn-full">Save Promise Date</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="card">
+      <div class="card-body" style="padding:14px;">
+        <a href="{% url 'transaction_delete' txn.pk %}" class="btn btn-danger-ghost btn-full">🗑 Delete Transaction</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+{% block fab %}
+{% if txn.status != 'paid' %}
+<button type="button" class="fab-global" onclick="openPaySheet()" title="Record Payment" style="background:var(--success);">₱</button>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if txn.status != 'paid' %}
+<!-- Quick Pay Bottom Sheet -->
+<div id="paySheetOverlay" onclick="closePaySheet()" style="display:none;position:fixed;inset:0;background:rgba(26,22,17,0.5);z-index:400;transition:opacity 0.25s;opacity:0;"></div>
+<div id="paySheet" style="position:fixed;bottom:-100%;left:0;right:0;background:var(--surface);border-radius:22px 22px 0 0;z-index:401;padding:0 0 env(safe-area-inset-bottom);box-shadow:0 -8px 40px rgba(26,22,17,0.18);transition:bottom 0.3s cubic-bezier(.32,.72,0,1);max-height:90vh;overflow-y:auto;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;">
+    <div>
+      <div style="font-family:var(--serif);font-size:1.05rem;font-weight:700;">Record Payment</div>
+      <div style="font-size:0.72rem;color:var(--text-2);margin-top:2px;">Balance: <span style="font-weight:700;color:var(--danger);">₱{{ txn.remaining_balance|floatformat:2 }}</span></div>
+    </div>
+    <button onclick="closePaySheet()" style="width:32px;height:32px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+  </div>
+  <div style="height:1px;background:var(--border);margin:0 20px;"></div>
+  <div style="padding:18px 20px 24px;">
+    <form method="post" action="{% url 'payment_add' txn.pk %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Amount (₱)</label>
+        <div class="amount-wrap">
+          <span class="amount-prefix">₱</span>
+          <input id="payAmountInput" type="number" name="amount" class="form-control" step="0.01" min="0.01"
+            placeholder="0.00" required style="font-size:1.1rem;padding-left:22px;font-weight:600;" />
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <button type="button" onclick="document.getElementById('payAmountInput').value='{{ txn.remaining_balance|floatformat:2 }}'" class="chip" style="font-size:0.72rem;padding:5px 10px;border-radius:16px;background:var(--success-bg);color:var(--success);border:1px solid var(--success-bd);cursor:pointer;font-weight:700;">Full ₱{{ txn.remaining_balance|floatformat:2 }}</button>
+          {% if txn.remaining_balance > 50 %}<button type="button" onclick="document.getElementById('payAmountInput').value='50'" class="chip" style="font-size:0.72rem;padding:5px 10px;border-radius:16px;background:var(--surface-2);color:var(--text-2);border:1px solid var(--border);cursor:pointer;">₱50</button>{% endif %}
+          {% if txn.remaining_balance > 100 %}<button type="button" onclick="document.getElementById('payAmountInput').value='100'" class="chip" style="font-size:0.72rem;padding:5px 10px;border-radius:16px;background:var(--surface-2);color:var(--text-2);border:1px solid var(--border);cursor:pointer;">₱100</button>{% endif %}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group mb-0">
+          <label class="form-label">Date</label>
+          <input type="date" name="date" class="form-control" required />
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Time</label>
+          <input type="time" name="paid_time" class="form-control" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:12px;">
+        <label class="form-label">Note (optional)</label>
+        <input type="text" name="note" class="form-control" placeholder="e.g. Cash payment" />
+      </div>
+      <button type="submit" class="btn btn-success btn-full" style="margin-top:6px;padding:13px;font-size:0.95rem;">✓ Record Payment</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+<script>
+  // Set today's date as default for payment date
+  document.addEventListener('DOMContentLoaded', function() {
+    var d = new Date();
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth()+1).padStart(2,'0');
+    var dd = String(d.getDate()).padStart(2,'0');
+    var today = yyyy+'-'+mm+'-'+dd;
+    var dateInputs = document.querySelectorAll('input[name="date"]');
+    dateInputs.forEach(function(inp){ if(!inp.value) inp.value = today; });
+    var timeInputs = document.querySelectorAll('input[name="paid_time"]');
+    var hh = String(d.getHours()).padStart(2,'0');
+    var min = String(d.getMinutes()).padStart(2,'0');
+    timeInputs.forEach(function(inp){ if(!inp.value) inp.value = hh+':'+min; });
+  });
+
+  function openPaySheet() {
+    document.getElementById('paySheet').classList.add('open');
+    document.getElementById('paySheetOverlay').classList.add('open');
+    setTimeout(function(){ document.getElementById('payAmountInput').focus(); }, 300);
+  }
+  function closePaySheet() {
+    document.getElementById('paySheet').classList.remove('open');
+    document.getElementById('paySheetOverlay').classList.remove('open');
+  }
+</script>
+{% endblock %}
+
+
